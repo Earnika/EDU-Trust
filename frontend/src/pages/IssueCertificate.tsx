@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { useWeb3 } from '../contexts/Web3Context';
 import { useContract } from '../hooks/useContract';
-import { 
-  GraduationCap, 
-  User, 
-  BookOpen, 
-  Award, 
+import {
+  GraduationCap,
+  User,
+  BookOpen,
+  Award,
   Upload,
   Eye,
   Download,
@@ -112,7 +112,7 @@ const IssueCertificate: React.FC = () => {
       );
 
       const receipt = await tx.wait();
-      
+
       // Extract token ID from the transaction receipt events
       let tokenId: string;
       try {
@@ -125,7 +125,7 @@ const IssueCertificate: React.FC = () => {
             return false;
           }
         });
-        
+
         if (event) {
           const parsedEvent = contracts.certificateNFT.interface.parseLog(event);
           tokenId = parsedEvent.args.tokenId.toString();
@@ -141,15 +141,12 @@ const IssueCertificate: React.FC = () => {
         const tokens = await contracts.certificateNFT.getStudentCertificates(formData.studentAddress);
         tokenId = tokens[tokens.length - 1].toString();
       }
-      
+
       setMintedTokenId(tokenId);
 
-      // Update certificate details
-      await contracts.certificateNFT.updateCertificateDetails(
-        tokenId,
-        formData.studentName,
-        formData.department
-      );
+      // Note: In the optimized contract, student name and department are stored in IPFS
+      // The contract only stores: ipfsHash, type, revocation status
+      // Details are emitted in the RegularCertDetails event
 
       // Generate QR code
       await generateQRCode(tokenId);
@@ -415,15 +412,14 @@ const IssueCertificate: React.FC = () => {
                   {certificateTemplates.map((template) => (
                     <div
                       key={template.id}
-                      className={`p-4 border-2 rounded-lg cursor-pointer transition-colors ${
-                        formData.templateType === template.id
+                      className={`p-4 border-2 rounded-lg cursor-pointer transition-colors ${formData.templateType === template.id
                           ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
                           : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-                      }`}
+                        }`}
                       onClick={() => setFormData(prev => ({ ...prev, templateType: template.id as any }))}
                     >
                       <div className="text-center">
-                        <div 
+                        <div
                           className="w-8 h-8 rounded-full mx-auto mb-2"
                           style={{ backgroundColor: template.borderColor }}
                         ></div>

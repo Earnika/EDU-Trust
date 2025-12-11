@@ -24,115 +24,29 @@ import type {
 } from "../common";
 
 export declare namespace CertificateNFT {
-  export type CourseStruct = {
-    courseCode: string;
-    courseTitle: string;
-    gradeSecured: string;
-    gradePoints: BigNumberish;
-    status: string;
-    creditsObtained: BigNumberish;
-  };
-
-  export type CourseStructOutput = [
-    courseCode: string,
-    courseTitle: string,
-    gradeSecured: string,
-    gradePoints: bigint,
-    status: string,
-    creditsObtained: bigint
-  ] & {
-    courseCode: string;
-    courseTitle: string;
-    gradeSecured: string;
-    gradePoints: bigint;
-    status: string;
-    creditsObtained: bigint;
-  };
-
-  export type CertificateDataStruct = {
-    studentName: string;
-    courseName: string;
-    grade: string;
-    ipfsHash: string;
-    department: string;
-    issueDate: BigNumberish;
-    isRevoked: boolean;
-    issuer: AddressLike;
-  };
-
-  export type CertificateDataStructOutput = [
-    studentName: string,
-    courseName: string,
-    grade: string,
-    ipfsHash: string,
-    department: string,
-    issueDate: bigint,
-    isRevoked: boolean,
-    issuer: string
-  ] & {
-    studentName: string;
-    courseName: string;
-    grade: string;
-    ipfsHash: string;
-    department: string;
-    issueDate: bigint;
-    isRevoked: boolean;
-    issuer: string;
-  };
-
-  export type SemesterCertificateStruct = {
-    studentName: string;
+  export type SemesterParamsStruct = {
     serialNo: string;
     memoNo: string;
     regdNo: string;
     branch: string;
     examination: string;
-    monthYearExams: string;
-    aadharNo: string;
-    studentPhoto: string;
-    courses: CertificateNFT.CourseStruct[];
-    totalCredits: BigNumberish;
     sgpa: BigNumberish;
-    mediumOfInstruction: string;
-    issueDate: BigNumberish;
-    issuer: AddressLike;
-    isRevoked: boolean;
   };
 
-  export type SemesterCertificateStructOutput = [
-    studentName: string,
+  export type SemesterParamsStructOutput = [
     serialNo: string,
     memoNo: string,
     regdNo: string,
     branch: string,
     examination: string,
-    monthYearExams: string,
-    aadharNo: string,
-    studentPhoto: string,
-    courses: CertificateNFT.CourseStructOutput[],
-    totalCredits: bigint,
-    sgpa: bigint,
-    mediumOfInstruction: string,
-    issueDate: bigint,
-    issuer: string,
-    isRevoked: boolean
+    sgpa: bigint
   ] & {
-    studentName: string;
     serialNo: string;
     memoNo: string;
     regdNo: string;
     branch: string;
     examination: string;
-    monthYearExams: string;
-    aadharNo: string;
-    studentPhoto: string;
-    courses: CertificateNFT.CourseStructOutput[];
-    totalCredits: bigint;
     sgpa: bigint;
-    mediumOfInstruction: string;
-    issueDate: bigint;
-    issuer: string;
-    isRevoked: boolean;
   };
 }
 
@@ -141,26 +55,22 @@ export interface CertificateNFTInterface extends Interface {
     nameOrSignature:
       | "ADMIN_ROLE"
       | "DEFAULT_ADMIN_ROLE"
+      | "MAX_BATCH_SIZE"
       | "MINTER_ROLE"
+      | "VERIFIER_ROLE"
       | "approve"
       | "balanceOf"
-      | "calculateSGPA"
-      | "certificates"
-      | "cidToTokenId"
+      | "certConfigs"
       | "getApproved"
-      | "getCIDByTokenId"
-      | "getCertificateData"
       | "getRoleAdmin"
-      | "getSemesterCertificate"
       | "getStudentCertificates"
-      | "getStudentSemesterCertificates"
-      | "getTokenIdByCID"
       | "grantRole"
       | "hasRole"
       | "isApprovedForAll"
-      | "isMemoNumberUsed"
-      | "isSerialNumberUsed"
+      | "mintAchievementCertificate"
       | "mintCertificate"
+      | "mintCertificatesBatch"
+      | "mintCustomCertificate"
       | "mintSemesterCertificate"
       | "name"
       | "ownerOf"
@@ -169,45 +79,39 @@ export interface CertificateNFTInterface extends Interface {
       | "renounceRole"
       | "revokeCertificate"
       | "revokeRole"
-      | "revokeSemesterCertificate"
       | "safeTransferFrom(address,address,uint256)"
       | "safeTransferFrom(address,address,uint256,bytes)"
-      | "semesterCertificates"
       | "setApprovalForAll"
       | "setBaseURI"
       | "studentCertificates"
-      | "studentSemesterCerts"
       | "supportsInterface"
       | "symbol"
-      | "tokenIdToCID"
       | "tokenURI"
       | "transferFrom"
       | "unpause"
-      | "updateCertificateDetails"
-      | "updateSemesterCertificatePhoto"
       | "usedHashes"
-      | "usedMemoNumbers"
-      | "usedSerialNumbers"
+      | "usedUniqueIdentifiers"
       | "verifyCertificate"
-      | "verifySemesterCertificate"
+      | "verifyCertificateByVerifier"
   ): FunctionFragment;
 
   getEvent(
     nameOrSignatureOrTopic:
+      | "AchievementCertDetails"
       | "Approval"
       | "ApprovalForAll"
       | "BatchMetadataUpdate"
+      | "CertRevoked"
+      | "CertVerified"
       | "CertificateIssued"
-      | "CertificateMetadataStored"
-      | "CertificateRevoked"
-      | "CertificateVerified"
+      | "CustomCertDetails"
       | "MetadataUpdate"
       | "Paused"
+      | "RegularCertDetails"
       | "RoleAdminChanged"
       | "RoleGranted"
       | "RoleRevoked"
-      | "SemesterCertificateIssued"
-      | "SemesterCertificateRevoked"
+      | "SemesterCertDetails"
       | "Transfer"
       | "Unpaused"
   ): EventFragment;
@@ -221,7 +125,15 @@ export interface CertificateNFTInterface extends Interface {
     values?: undefined
   ): string;
   encodeFunctionData(
+    functionFragment: "MAX_BATCH_SIZE",
+    values?: undefined
+  ): string;
+  encodeFunctionData(
     functionFragment: "MINTER_ROLE",
+    values?: undefined
+  ): string;
+  encodeFunctionData(
+    functionFragment: "VERIFIER_ROLE",
     values?: undefined
   ): string;
   encodeFunctionData(
@@ -233,27 +145,11 @@ export interface CertificateNFTInterface extends Interface {
     values: [AddressLike]
   ): string;
   encodeFunctionData(
-    functionFragment: "calculateSGPA",
-    values: [CertificateNFT.CourseStruct[]]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "certificates",
+    functionFragment: "certConfigs",
     values: [BigNumberish]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "cidToTokenId",
-    values: [string]
   ): string;
   encodeFunctionData(
     functionFragment: "getApproved",
-    values: [BigNumberish]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "getCIDByTokenId",
-    values: [BigNumberish]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "getCertificateData",
     values: [BigNumberish]
   ): string;
   encodeFunctionData(
@@ -261,20 +157,8 @@ export interface CertificateNFTInterface extends Interface {
     values: [BytesLike]
   ): string;
   encodeFunctionData(
-    functionFragment: "getSemesterCertificate",
-    values: [BigNumberish]
-  ): string;
-  encodeFunctionData(
     functionFragment: "getStudentCertificates",
     values: [AddressLike]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "getStudentSemesterCertificates",
-    values: [AddressLike]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "getTokenIdByCID",
-    values: [string]
   ): string;
   encodeFunctionData(
     functionFragment: "grantRole",
@@ -289,25 +173,24 @@ export interface CertificateNFTInterface extends Interface {
     values: [AddressLike, AddressLike]
   ): string;
   encodeFunctionData(
-    functionFragment: "isMemoNumberUsed",
-    values: [string]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "isSerialNumberUsed",
-    values: [string]
+    functionFragment: "mintAchievementCertificate",
+    values: [AddressLike, string, string, string, AddressLike[]]
   ): string;
   encodeFunctionData(
     functionFragment: "mintCertificate",
     values: [AddressLike, string, string, string]
   ): string;
   encodeFunctionData(
+    functionFragment: "mintCertificatesBatch",
+    values: [AddressLike[], string[], string[], string[]]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "mintCustomCertificate",
+    values: [AddressLike, string, string[], string[], string]
+  ): string;
+  encodeFunctionData(
     functionFragment: "mintSemesterCertificate",
-    values: [
-      AddressLike,
-      string,
-      string,
-      CertificateNFT.SemesterCertificateStruct
-    ]
+    values: [AddressLike, CertificateNFT.SemesterParamsStruct, string]
   ): string;
   encodeFunctionData(functionFragment: "name", values?: undefined): string;
   encodeFunctionData(
@@ -329,20 +212,12 @@ export interface CertificateNFTInterface extends Interface {
     values: [BytesLike, AddressLike]
   ): string;
   encodeFunctionData(
-    functionFragment: "revokeSemesterCertificate",
-    values: [BigNumberish]
-  ): string;
-  encodeFunctionData(
     functionFragment: "safeTransferFrom(address,address,uint256)",
     values: [AddressLike, AddressLike, BigNumberish]
   ): string;
   encodeFunctionData(
     functionFragment: "safeTransferFrom(address,address,uint256,bytes)",
     values: [AddressLike, AddressLike, BigNumberish, BytesLike]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "semesterCertificates",
-    values: [BigNumberish]
   ): string;
   encodeFunctionData(
     functionFragment: "setApprovalForAll",
@@ -354,18 +229,10 @@ export interface CertificateNFTInterface extends Interface {
     values: [AddressLike, BigNumberish]
   ): string;
   encodeFunctionData(
-    functionFragment: "studentSemesterCerts",
-    values: [AddressLike, BigNumberish]
-  ): string;
-  encodeFunctionData(
     functionFragment: "supportsInterface",
     values: [BytesLike]
   ): string;
   encodeFunctionData(functionFragment: "symbol", values?: undefined): string;
-  encodeFunctionData(
-    functionFragment: "tokenIdToCID",
-    values: [BigNumberish]
-  ): string;
   encodeFunctionData(
     functionFragment: "tokenURI",
     values: [BigNumberish]
@@ -375,21 +242,9 @@ export interface CertificateNFTInterface extends Interface {
     values: [AddressLike, AddressLike, BigNumberish]
   ): string;
   encodeFunctionData(functionFragment: "unpause", values?: undefined): string;
-  encodeFunctionData(
-    functionFragment: "updateCertificateDetails",
-    values: [BigNumberish, string, string]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "updateSemesterCertificatePhoto",
-    values: [BigNumberish, string]
-  ): string;
   encodeFunctionData(functionFragment: "usedHashes", values: [string]): string;
   encodeFunctionData(
-    functionFragment: "usedMemoNumbers",
-    values: [string]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "usedSerialNumbers",
+    functionFragment: "usedUniqueIdentifiers",
     values: [string]
   ): string;
   encodeFunctionData(
@@ -397,7 +252,7 @@ export interface CertificateNFTInterface extends Interface {
     values: [BigNumberish]
   ): string;
   encodeFunctionData(
-    functionFragment: "verifySemesterCertificate",
+    functionFragment: "verifyCertificateByVerifier",
     values: [BigNumberish]
   ): string;
 
@@ -407,21 +262,21 @@ export interface CertificateNFTInterface extends Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(
+    functionFragment: "MAX_BATCH_SIZE",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
     functionFragment: "MINTER_ROLE",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "VERIFIER_ROLE",
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "approve", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "balanceOf", data: BytesLike): Result;
   decodeFunctionResult(
-    functionFragment: "calculateSGPA",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
-    functionFragment: "certificates",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
-    functionFragment: "cidToTokenId",
+    functionFragment: "certConfigs",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
@@ -429,31 +284,11 @@ export interface CertificateNFTInterface extends Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: "getCIDByTokenId",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
-    functionFragment: "getCertificateData",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
     functionFragment: "getRoleAdmin",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: "getSemesterCertificate",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
     functionFragment: "getStudentCertificates",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
-    functionFragment: "getStudentSemesterCertificates",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
-    functionFragment: "getTokenIdByCID",
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "grantRole", data: BytesLike): Result;
@@ -463,15 +298,19 @@ export interface CertificateNFTInterface extends Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: "isMemoNumberUsed",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
-    functionFragment: "isSerialNumberUsed",
+    functionFragment: "mintAchievementCertificate",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
     functionFragment: "mintCertificate",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "mintCertificatesBatch",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "mintCustomCertificate",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
@@ -492,19 +331,11 @@ export interface CertificateNFTInterface extends Interface {
   ): Result;
   decodeFunctionResult(functionFragment: "revokeRole", data: BytesLike): Result;
   decodeFunctionResult(
-    functionFragment: "revokeSemesterCertificate",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
     functionFragment: "safeTransferFrom(address,address,uint256)",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
     functionFragment: "safeTransferFrom(address,address,uint256,bytes)",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
-    functionFragment: "semesterCertificates",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
@@ -517,39 +348,19 @@ export interface CertificateNFTInterface extends Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: "studentSemesterCerts",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
     functionFragment: "supportsInterface",
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "symbol", data: BytesLike): Result;
-  decodeFunctionResult(
-    functionFragment: "tokenIdToCID",
-    data: BytesLike
-  ): Result;
   decodeFunctionResult(functionFragment: "tokenURI", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "transferFrom",
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "unpause", data: BytesLike): Result;
-  decodeFunctionResult(
-    functionFragment: "updateCertificateDetails",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
-    functionFragment: "updateSemesterCertificatePhoto",
-    data: BytesLike
-  ): Result;
   decodeFunctionResult(functionFragment: "usedHashes", data: BytesLike): Result;
   decodeFunctionResult(
-    functionFragment: "usedMemoNumbers",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
-    functionFragment: "usedSerialNumbers",
+    functionFragment: "usedUniqueIdentifiers",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
@@ -557,9 +368,23 @@ export interface CertificateNFTInterface extends Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: "verifySemesterCertificate",
+    functionFragment: "verifyCertificateByVerifier",
     data: BytesLike
   ): Result;
+}
+
+export namespace AchievementCertDetailsEvent {
+  export type InputTuple = [id: BigNumberish, title: string, category: string];
+  export type OutputTuple = [id: bigint, title: string, category: string];
+  export interface OutputObject {
+    id: bigint;
+    title: string;
+    category: string;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
 }
 
 export namespace ApprovalEvent {
@@ -618,68 +443,11 @@ export namespace BatchMetadataUpdateEvent {
   export type LogDescription = TypedLogDescription<Event>;
 }
 
-export namespace CertificateIssuedEvent {
-  export type InputTuple = [
-    tokenId: BigNumberish,
-    student: AddressLike,
-    courseName: string,
-    studentName: string,
-    grade: string,
-    ipfsHash: string,
-    timestamp: BigNumberish
-  ];
-  export type OutputTuple = [
-    tokenId: bigint,
-    student: string,
-    courseName: string,
-    studentName: string,
-    grade: string,
-    ipfsHash: string,
-    timestamp: bigint
-  ];
+export namespace CertRevokedEvent {
+  export type InputTuple = [tokenId: BigNumberish, admin: AddressLike];
+  export type OutputTuple = [tokenId: bigint, admin: string];
   export interface OutputObject {
     tokenId: bigint;
-    student: string;
-    courseName: string;
-    studentName: string;
-    grade: string;
-    ipfsHash: string;
-    timestamp: bigint;
-  }
-  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
-  export type Filter = TypedDeferredTopicFilter<Event>;
-  export type Log = TypedEventLog<Event>;
-  export type LogDescription = TypedLogDescription<Event>;
-}
-
-export namespace CertificateMetadataStoredEvent {
-  export type InputTuple = [
-    tokenId: BigNumberish,
-    cid: string,
-    student: AddressLike
-  ];
-  export type OutputTuple = [tokenId: bigint, cid: string, student: string];
-  export interface OutputObject {
-    tokenId: bigint;
-    cid: string;
-    student: string;
-  }
-  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
-  export type Filter = TypedDeferredTopicFilter<Event>;
-  export type Log = TypedEventLog<Event>;
-  export type LogDescription = TypedLogDescription<Event>;
-}
-
-export namespace CertificateRevokedEvent {
-  export type InputTuple = [
-    tokenId: BigNumberish,
-    student: AddressLike,
-    admin: AddressLike
-  ];
-  export type OutputTuple = [tokenId: bigint, student: string, admin: string];
-  export interface OutputObject {
-    tokenId: bigint;
-    student: string;
     admin: string;
   }
   export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
@@ -688,12 +456,62 @@ export namespace CertificateRevokedEvent {
   export type LogDescription = TypedLogDescription<Event>;
 }
 
-export namespace CertificateVerifiedEvent {
-  export type InputTuple = [tokenId: BigNumberish, isValid: boolean];
-  export type OutputTuple = [tokenId: bigint, isValid: boolean];
+export namespace CertVerifiedEvent {
+  export type InputTuple = [
+    tokenId: BigNumberish,
+    verifier: AddressLike,
+    isValid: boolean
+  ];
+  export type OutputTuple = [
+    tokenId: bigint,
+    verifier: string,
+    isValid: boolean
+  ];
   export interface OutputObject {
     tokenId: bigint;
+    verifier: string;
     isValid: boolean;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
+export namespace CertificateIssuedEvent {
+  export type InputTuple = [
+    tokenId: BigNumberish,
+    student: AddressLike,
+    ipfsHash: string,
+    certType: BigNumberish,
+    timestamp: BigNumberish
+  ];
+  export type OutputTuple = [
+    tokenId: bigint,
+    student: string,
+    ipfsHash: string,
+    certType: bigint,
+    timestamp: bigint
+  ];
+  export interface OutputObject {
+    tokenId: bigint;
+    student: string;
+    ipfsHash: string;
+    certType: bigint;
+    timestamp: bigint;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
+export namespace CustomCertDetailsEvent {
+  export type InputTuple = [id: BigNumberish, templateId: string];
+  export type OutputTuple = [id: bigint, templateId: string];
+  export interface OutputObject {
+    id: bigint;
+    templateId: string;
   }
   export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
   export type Filter = TypedDeferredTopicFilter<Event>;
@@ -718,6 +536,20 @@ export namespace PausedEvent {
   export type OutputTuple = [account: string];
   export interface OutputObject {
     account: string;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
+export namespace RegularCertDetailsEvent {
+  export type InputTuple = [id: BigNumberish, course: string, grade: string];
+  export type OutputTuple = [id: bigint, course: string, grade: string];
+  export interface OutputObject {
+    id: bigint;
+    course: string;
+    grade: string;
   }
   export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
   export type Filter = TypedDeferredTopicFilter<Event>;
@@ -783,57 +615,24 @@ export namespace RoleRevokedEvent {
   export type LogDescription = TypedLogDescription<Event>;
 }
 
-export namespace SemesterCertificateIssuedEvent {
+export namespace SemesterCertDetailsEvent {
   export type InputTuple = [
-    tokenId: BigNumberish,
-    student: AddressLike,
+    id: BigNumberish,
     serialNo: string,
     memoNo: string,
-    regdNo: string,
-    branch: string,
-    examination: string,
-    sgpa: BigNumberish,
-    timestamp: BigNumberish
+    sgpa: BigNumberish
   ];
   export type OutputTuple = [
-    tokenId: bigint,
-    student: string,
+    id: bigint,
     serialNo: string,
     memoNo: string,
-    regdNo: string,
-    branch: string,
-    examination: string,
-    sgpa: bigint,
-    timestamp: bigint
+    sgpa: bigint
   ];
   export interface OutputObject {
-    tokenId: bigint;
-    student: string;
+    id: bigint;
     serialNo: string;
     memoNo: string;
-    regdNo: string;
-    branch: string;
-    examination: string;
     sgpa: bigint;
-    timestamp: bigint;
-  }
-  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
-  export type Filter = TypedDeferredTopicFilter<Event>;
-  export type Log = TypedEventLog<Event>;
-  export type LogDescription = TypedLogDescription<Event>;
-}
-
-export namespace SemesterCertificateRevokedEvent {
-  export type InputTuple = [
-    tokenId: BigNumberish,
-    student: AddressLike,
-    admin: AddressLike
-  ];
-  export type OutputTuple = [tokenId: bigint, student: string, admin: string];
-  export interface OutputObject {
-    tokenId: bigint;
-    student: string;
-    admin: string;
   }
   export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
   export type Filter = TypedDeferredTopicFilter<Event>;
@@ -918,7 +717,11 @@ export interface CertificateNFT extends BaseContract {
 
   DEFAULT_ADMIN_ROLE: TypedContractMethod<[], [string], "view">;
 
+  MAX_BATCH_SIZE: TypedContractMethod<[], [bigint], "view">;
+
   MINTER_ROLE: TypedContractMethod<[], [string], "view">;
+
+  VERIFIER_ROLE: TypedContractMethod<[], [string], "view">;
 
   approve: TypedContractMethod<
     [to: AddressLike, tokenId: BigNumberish],
@@ -928,66 +731,28 @@ export interface CertificateNFT extends BaseContract {
 
   balanceOf: TypedContractMethod<[owner: AddressLike], [bigint], "view">;
 
-  calculateSGPA: TypedContractMethod<
-    [courses: CertificateNFT.CourseStruct[]],
-    [bigint],
-    "view"
-  >;
-
-  certificates: TypedContractMethod<
+  certConfigs: TypedContractMethod<
     [arg0: BigNumberish],
     [
-      [string, string, string, string, string, bigint, boolean, string] & {
-        studentName: string;
-        courseName: string;
-        grade: string;
-        ipfsHash: string;
-        department: string;
-        issueDate: bigint;
+      [bigint, boolean, string, bigint] & {
+        certType: bigint;
         isRevoked: boolean;
         issuer: string;
+        issueDate: bigint;
       }
     ],
     "view"
   >;
 
-  cidToTokenId: TypedContractMethod<[arg0: string], [bigint], "view">;
-
   getApproved: TypedContractMethod<[tokenId: BigNumberish], [string], "view">;
 
-  getCIDByTokenId: TypedContractMethod<
-    [tokenId: BigNumberish],
-    [string],
-    "view"
-  >;
-
-  getCertificateData: TypedContractMethod<
-    [tokenId: BigNumberish],
-    [CertificateNFT.CertificateDataStructOutput],
-    "view"
-  >;
-
   getRoleAdmin: TypedContractMethod<[role: BytesLike], [string], "view">;
-
-  getSemesterCertificate: TypedContractMethod<
-    [tokenId: BigNumberish],
-    [CertificateNFT.SemesterCertificateStructOutput],
-    "view"
-  >;
 
   getStudentCertificates: TypedContractMethod<
     [student: AddressLike],
     [bigint[]],
     "view"
   >;
-
-  getStudentSemesterCertificates: TypedContractMethod<
-    [student: AddressLike],
-    [bigint[]],
-    "view"
-  >;
-
-  getTokenIdByCID: TypedContractMethod<[cid: string], [bigint], "view">;
 
   grantRole: TypedContractMethod<
     [role: BytesLike, account: AddressLike],
@@ -1007,12 +772,16 @@ export interface CertificateNFT extends BaseContract {
     "view"
   >;
 
-  isMemoNumberUsed: TypedContractMethod<[memoNo: string], [boolean], "view">;
-
-  isSerialNumberUsed: TypedContractMethod<
-    [serialNo: string],
-    [boolean],
-    "view"
+  mintAchievementCertificate: TypedContractMethod<
+    [
+      student: AddressLike,
+      title: string,
+      category: string,
+      ipfsHash: string,
+      arg4: AddressLike[]
+    ],
+    [bigint],
+    "nonpayable"
   >;
 
   mintCertificate: TypedContractMethod<
@@ -1021,12 +790,34 @@ export interface CertificateNFT extends BaseContract {
     "nonpayable"
   >;
 
+  mintCertificatesBatch: TypedContractMethod<
+    [
+      students: AddressLike[],
+      courseNames: string[],
+      grades: string[],
+      ipfsHashes: string[]
+    ],
+    [void],
+    "nonpayable"
+  >;
+
+  mintCustomCertificate: TypedContractMethod<
+    [
+      student: AddressLike,
+      templateId: string,
+      arg2: string[],
+      arg3: string[],
+      ipfsHash: string
+    ],
+    [bigint],
+    "nonpayable"
+  >;
+
   mintSemesterCertificate: TypedContractMethod<
     [
       student: AddressLike,
-      serialNo: string,
-      memoNo: string,
-      certData: CertificateNFT.SemesterCertificateStruct
+      params: CertificateNFT.SemesterParamsStruct,
+      ipfsHash: string
     ],
     [bigint],
     "nonpayable"
@@ -1058,12 +849,6 @@ export interface CertificateNFT extends BaseContract {
     "nonpayable"
   >;
 
-  revokeSemesterCertificate: TypedContractMethod<
-    [tokenId: BigNumberish],
-    [void],
-    "nonpayable"
-  >;
-
   "safeTransferFrom(address,address,uint256)": TypedContractMethod<
     [from: AddressLike, to: AddressLike, tokenId: BigNumberish],
     [void],
@@ -1081,46 +866,6 @@ export interface CertificateNFT extends BaseContract {
     "nonpayable"
   >;
 
-  semesterCertificates: TypedContractMethod<
-    [arg0: BigNumberish],
-    [
-      [
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        bigint,
-        bigint,
-        string,
-        bigint,
-        string,
-        boolean
-      ] & {
-        studentName: string;
-        serialNo: string;
-        memoNo: string;
-        regdNo: string;
-        branch: string;
-        examination: string;
-        monthYearExams: string;
-        aadharNo: string;
-        studentPhoto: string;
-        totalCredits: bigint;
-        sgpa: bigint;
-        mediumOfInstruction: string;
-        issueDate: bigint;
-        issuer: string;
-        isRevoked: boolean;
-      }
-    ],
-    "view"
-  >;
-
   setApprovalForAll: TypedContractMethod<
     [operator: AddressLike, approved: boolean],
     [void],
@@ -1135,12 +880,6 @@ export interface CertificateNFT extends BaseContract {
     "view"
   >;
 
-  studentSemesterCerts: TypedContractMethod<
-    [arg0: AddressLike, arg1: BigNumberish],
-    [bigint],
-    "view"
-  >;
-
   supportsInterface: TypedContractMethod<
     [interfaceId: BytesLike],
     [boolean],
@@ -1148,8 +887,6 @@ export interface CertificateNFT extends BaseContract {
   >;
 
   symbol: TypedContractMethod<[], [string], "view">;
-
-  tokenIdToCID: TypedContractMethod<[arg0: BigNumberish], [string], "view">;
 
   tokenURI: TypedContractMethod<[tokenId: BigNumberish], [string], "view">;
 
@@ -1161,44 +898,26 @@ export interface CertificateNFT extends BaseContract {
 
   unpause: TypedContractMethod<[], [void], "nonpayable">;
 
-  updateCertificateDetails: TypedContractMethod<
-    [tokenId: BigNumberish, studentName: string, department: string],
-    [void],
-    "nonpayable"
-  >;
-
-  updateSemesterCertificatePhoto: TypedContractMethod<
-    [tokenId: BigNumberish, studentPhoto: string],
-    [void],
-    "nonpayable"
-  >;
-
   usedHashes: TypedContractMethod<[arg0: string], [boolean], "view">;
 
-  usedMemoNumbers: TypedContractMethod<[arg0: string], [boolean], "view">;
-
-  usedSerialNumbers: TypedContractMethod<[arg0: string], [boolean], "view">;
+  usedUniqueIdentifiers: TypedContractMethod<[arg0: string], [boolean], "view">;
 
   verifyCertificate: TypedContractMethod<
     [tokenId: BigNumberish],
     [
-      [CertificateNFT.CertificateDataStructOutput, boolean] & {
-        certificateData: CertificateNFT.CertificateDataStructOutput;
+      [boolean, string, bigint] & {
         isValid: boolean;
+        ipfsUri: string;
+        cType: bigint;
       }
     ],
     "view"
   >;
 
-  verifySemesterCertificate: TypedContractMethod<
+  verifyCertificateByVerifier: TypedContractMethod<
     [tokenId: BigNumberish],
-    [
-      [CertificateNFT.SemesterCertificateStructOutput, boolean] & {
-        certificateData: CertificateNFT.SemesterCertificateStructOutput;
-        isValid: boolean;
-      }
-    ],
-    "view"
+    [[boolean, bigint]],
+    "nonpayable"
   >;
 
   getFunction<T extends ContractMethod = ContractMethod>(
@@ -1212,7 +931,13 @@ export interface CertificateNFT extends BaseContract {
     nameOrSignature: "DEFAULT_ADMIN_ROLE"
   ): TypedContractMethod<[], [string], "view">;
   getFunction(
+    nameOrSignature: "MAX_BATCH_SIZE"
+  ): TypedContractMethod<[], [bigint], "view">;
+  getFunction(
     nameOrSignature: "MINTER_ROLE"
+  ): TypedContractMethod<[], [string], "view">;
+  getFunction(
+    nameOrSignature: "VERIFIER_ROLE"
   ): TypedContractMethod<[], [string], "view">;
   getFunction(
     nameOrSignature: "approve"
@@ -1225,65 +950,28 @@ export interface CertificateNFT extends BaseContract {
     nameOrSignature: "balanceOf"
   ): TypedContractMethod<[owner: AddressLike], [bigint], "view">;
   getFunction(
-    nameOrSignature: "calculateSGPA"
-  ): TypedContractMethod<
-    [courses: CertificateNFT.CourseStruct[]],
-    [bigint],
-    "view"
-  >;
-  getFunction(
-    nameOrSignature: "certificates"
+    nameOrSignature: "certConfigs"
   ): TypedContractMethod<
     [arg0: BigNumberish],
     [
-      [string, string, string, string, string, bigint, boolean, string] & {
-        studentName: string;
-        courseName: string;
-        grade: string;
-        ipfsHash: string;
-        department: string;
-        issueDate: bigint;
+      [bigint, boolean, string, bigint] & {
+        certType: bigint;
         isRevoked: boolean;
         issuer: string;
+        issueDate: bigint;
       }
     ],
     "view"
   >;
   getFunction(
-    nameOrSignature: "cidToTokenId"
-  ): TypedContractMethod<[arg0: string], [bigint], "view">;
-  getFunction(
     nameOrSignature: "getApproved"
   ): TypedContractMethod<[tokenId: BigNumberish], [string], "view">;
-  getFunction(
-    nameOrSignature: "getCIDByTokenId"
-  ): TypedContractMethod<[tokenId: BigNumberish], [string], "view">;
-  getFunction(
-    nameOrSignature: "getCertificateData"
-  ): TypedContractMethod<
-    [tokenId: BigNumberish],
-    [CertificateNFT.CertificateDataStructOutput],
-    "view"
-  >;
   getFunction(
     nameOrSignature: "getRoleAdmin"
   ): TypedContractMethod<[role: BytesLike], [string], "view">;
   getFunction(
-    nameOrSignature: "getSemesterCertificate"
-  ): TypedContractMethod<
-    [tokenId: BigNumberish],
-    [CertificateNFT.SemesterCertificateStructOutput],
-    "view"
-  >;
-  getFunction(
     nameOrSignature: "getStudentCertificates"
   ): TypedContractMethod<[student: AddressLike], [bigint[]], "view">;
-  getFunction(
-    nameOrSignature: "getStudentSemesterCertificates"
-  ): TypedContractMethod<[student: AddressLike], [bigint[]], "view">;
-  getFunction(
-    nameOrSignature: "getTokenIdByCID"
-  ): TypedContractMethod<[cid: string], [bigint], "view">;
   getFunction(
     nameOrSignature: "grantRole"
   ): TypedContractMethod<
@@ -1306,11 +994,18 @@ export interface CertificateNFT extends BaseContract {
     "view"
   >;
   getFunction(
-    nameOrSignature: "isMemoNumberUsed"
-  ): TypedContractMethod<[memoNo: string], [boolean], "view">;
-  getFunction(
-    nameOrSignature: "isSerialNumberUsed"
-  ): TypedContractMethod<[serialNo: string], [boolean], "view">;
+    nameOrSignature: "mintAchievementCertificate"
+  ): TypedContractMethod<
+    [
+      student: AddressLike,
+      title: string,
+      category: string,
+      ipfsHash: string,
+      arg4: AddressLike[]
+    ],
+    [bigint],
+    "nonpayable"
+  >;
   getFunction(
     nameOrSignature: "mintCertificate"
   ): TypedContractMethod<
@@ -1319,13 +1014,37 @@ export interface CertificateNFT extends BaseContract {
     "nonpayable"
   >;
   getFunction(
+    nameOrSignature: "mintCertificatesBatch"
+  ): TypedContractMethod<
+    [
+      students: AddressLike[],
+      courseNames: string[],
+      grades: string[],
+      ipfsHashes: string[]
+    ],
+    [void],
+    "nonpayable"
+  >;
+  getFunction(
+    nameOrSignature: "mintCustomCertificate"
+  ): TypedContractMethod<
+    [
+      student: AddressLike,
+      templateId: string,
+      arg2: string[],
+      arg3: string[],
+      ipfsHash: string
+    ],
+    [bigint],
+    "nonpayable"
+  >;
+  getFunction(
     nameOrSignature: "mintSemesterCertificate"
   ): TypedContractMethod<
     [
       student: AddressLike,
-      serialNo: string,
-      memoNo: string,
-      certData: CertificateNFT.SemesterCertificateStruct
+      params: CertificateNFT.SemesterParamsStruct,
+      ipfsHash: string
     ],
     [bigint],
     "nonpayable"
@@ -1360,9 +1079,6 @@ export interface CertificateNFT extends BaseContract {
     "nonpayable"
   >;
   getFunction(
-    nameOrSignature: "revokeSemesterCertificate"
-  ): TypedContractMethod<[tokenId: BigNumberish], [void], "nonpayable">;
-  getFunction(
     nameOrSignature: "safeTransferFrom(address,address,uint256)"
   ): TypedContractMethod<
     [from: AddressLike, to: AddressLike, tokenId: BigNumberish],
@@ -1382,47 +1098,6 @@ export interface CertificateNFT extends BaseContract {
     "nonpayable"
   >;
   getFunction(
-    nameOrSignature: "semesterCertificates"
-  ): TypedContractMethod<
-    [arg0: BigNumberish],
-    [
-      [
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        string,
-        bigint,
-        bigint,
-        string,
-        bigint,
-        string,
-        boolean
-      ] & {
-        studentName: string;
-        serialNo: string;
-        memoNo: string;
-        regdNo: string;
-        branch: string;
-        examination: string;
-        monthYearExams: string;
-        aadharNo: string;
-        studentPhoto: string;
-        totalCredits: bigint;
-        sgpa: bigint;
-        mediumOfInstruction: string;
-        issueDate: bigint;
-        issuer: string;
-        isRevoked: boolean;
-      }
-    ],
-    "view"
-  >;
-  getFunction(
     nameOrSignature: "setApprovalForAll"
   ): TypedContractMethod<
     [operator: AddressLike, approved: boolean],
@@ -1440,21 +1115,11 @@ export interface CertificateNFT extends BaseContract {
     "view"
   >;
   getFunction(
-    nameOrSignature: "studentSemesterCerts"
-  ): TypedContractMethod<
-    [arg0: AddressLike, arg1: BigNumberish],
-    [bigint],
-    "view"
-  >;
-  getFunction(
     nameOrSignature: "supportsInterface"
   ): TypedContractMethod<[interfaceId: BytesLike], [boolean], "view">;
   getFunction(
     nameOrSignature: "symbol"
   ): TypedContractMethod<[], [string], "view">;
-  getFunction(
-    nameOrSignature: "tokenIdToCID"
-  ): TypedContractMethod<[arg0: BigNumberish], [string], "view">;
   getFunction(
     nameOrSignature: "tokenURI"
   ): TypedContractMethod<[tokenId: BigNumberish], [string], "view">;
@@ -1469,53 +1134,39 @@ export interface CertificateNFT extends BaseContract {
     nameOrSignature: "unpause"
   ): TypedContractMethod<[], [void], "nonpayable">;
   getFunction(
-    nameOrSignature: "updateCertificateDetails"
-  ): TypedContractMethod<
-    [tokenId: BigNumberish, studentName: string, department: string],
-    [void],
-    "nonpayable"
-  >;
-  getFunction(
-    nameOrSignature: "updateSemesterCertificatePhoto"
-  ): TypedContractMethod<
-    [tokenId: BigNumberish, studentPhoto: string],
-    [void],
-    "nonpayable"
-  >;
-  getFunction(
     nameOrSignature: "usedHashes"
   ): TypedContractMethod<[arg0: string], [boolean], "view">;
   getFunction(
-    nameOrSignature: "usedMemoNumbers"
-  ): TypedContractMethod<[arg0: string], [boolean], "view">;
-  getFunction(
-    nameOrSignature: "usedSerialNumbers"
+    nameOrSignature: "usedUniqueIdentifiers"
   ): TypedContractMethod<[arg0: string], [boolean], "view">;
   getFunction(
     nameOrSignature: "verifyCertificate"
   ): TypedContractMethod<
     [tokenId: BigNumberish],
     [
-      [CertificateNFT.CertificateDataStructOutput, boolean] & {
-        certificateData: CertificateNFT.CertificateDataStructOutput;
+      [boolean, string, bigint] & {
         isValid: boolean;
+        ipfsUri: string;
+        cType: bigint;
       }
     ],
     "view"
   >;
   getFunction(
-    nameOrSignature: "verifySemesterCertificate"
+    nameOrSignature: "verifyCertificateByVerifier"
   ): TypedContractMethod<
     [tokenId: BigNumberish],
-    [
-      [CertificateNFT.SemesterCertificateStructOutput, boolean] & {
-        certificateData: CertificateNFT.SemesterCertificateStructOutput;
-        isValid: boolean;
-      }
-    ],
-    "view"
+    [[boolean, bigint]],
+    "nonpayable"
   >;
 
+  getEvent(
+    key: "AchievementCertDetails"
+  ): TypedContractEvent<
+    AchievementCertDetailsEvent.InputTuple,
+    AchievementCertDetailsEvent.OutputTuple,
+    AchievementCertDetailsEvent.OutputObject
+  >;
   getEvent(
     key: "Approval"
   ): TypedContractEvent<
@@ -1538,6 +1189,20 @@ export interface CertificateNFT extends BaseContract {
     BatchMetadataUpdateEvent.OutputObject
   >;
   getEvent(
+    key: "CertRevoked"
+  ): TypedContractEvent<
+    CertRevokedEvent.InputTuple,
+    CertRevokedEvent.OutputTuple,
+    CertRevokedEvent.OutputObject
+  >;
+  getEvent(
+    key: "CertVerified"
+  ): TypedContractEvent<
+    CertVerifiedEvent.InputTuple,
+    CertVerifiedEvent.OutputTuple,
+    CertVerifiedEvent.OutputObject
+  >;
+  getEvent(
     key: "CertificateIssued"
   ): TypedContractEvent<
     CertificateIssuedEvent.InputTuple,
@@ -1545,25 +1210,11 @@ export interface CertificateNFT extends BaseContract {
     CertificateIssuedEvent.OutputObject
   >;
   getEvent(
-    key: "CertificateMetadataStored"
+    key: "CustomCertDetails"
   ): TypedContractEvent<
-    CertificateMetadataStoredEvent.InputTuple,
-    CertificateMetadataStoredEvent.OutputTuple,
-    CertificateMetadataStoredEvent.OutputObject
-  >;
-  getEvent(
-    key: "CertificateRevoked"
-  ): TypedContractEvent<
-    CertificateRevokedEvent.InputTuple,
-    CertificateRevokedEvent.OutputTuple,
-    CertificateRevokedEvent.OutputObject
-  >;
-  getEvent(
-    key: "CertificateVerified"
-  ): TypedContractEvent<
-    CertificateVerifiedEvent.InputTuple,
-    CertificateVerifiedEvent.OutputTuple,
-    CertificateVerifiedEvent.OutputObject
+    CustomCertDetailsEvent.InputTuple,
+    CustomCertDetailsEvent.OutputTuple,
+    CustomCertDetailsEvent.OutputObject
   >;
   getEvent(
     key: "MetadataUpdate"
@@ -1578,6 +1229,13 @@ export interface CertificateNFT extends BaseContract {
     PausedEvent.InputTuple,
     PausedEvent.OutputTuple,
     PausedEvent.OutputObject
+  >;
+  getEvent(
+    key: "RegularCertDetails"
+  ): TypedContractEvent<
+    RegularCertDetailsEvent.InputTuple,
+    RegularCertDetailsEvent.OutputTuple,
+    RegularCertDetailsEvent.OutputObject
   >;
   getEvent(
     key: "RoleAdminChanged"
@@ -1601,18 +1259,11 @@ export interface CertificateNFT extends BaseContract {
     RoleRevokedEvent.OutputObject
   >;
   getEvent(
-    key: "SemesterCertificateIssued"
+    key: "SemesterCertDetails"
   ): TypedContractEvent<
-    SemesterCertificateIssuedEvent.InputTuple,
-    SemesterCertificateIssuedEvent.OutputTuple,
-    SemesterCertificateIssuedEvent.OutputObject
-  >;
-  getEvent(
-    key: "SemesterCertificateRevoked"
-  ): TypedContractEvent<
-    SemesterCertificateRevokedEvent.InputTuple,
-    SemesterCertificateRevokedEvent.OutputTuple,
-    SemesterCertificateRevokedEvent.OutputObject
+    SemesterCertDetailsEvent.InputTuple,
+    SemesterCertDetailsEvent.OutputTuple,
+    SemesterCertDetailsEvent.OutputObject
   >;
   getEvent(
     key: "Transfer"
@@ -1630,6 +1281,17 @@ export interface CertificateNFT extends BaseContract {
   >;
 
   filters: {
+    "AchievementCertDetails(uint256,string,string)": TypedContractEvent<
+      AchievementCertDetailsEvent.InputTuple,
+      AchievementCertDetailsEvent.OutputTuple,
+      AchievementCertDetailsEvent.OutputObject
+    >;
+    AchievementCertDetails: TypedContractEvent<
+      AchievementCertDetailsEvent.InputTuple,
+      AchievementCertDetailsEvent.OutputTuple,
+      AchievementCertDetailsEvent.OutputObject
+    >;
+
     "Approval(address,address,uint256)": TypedContractEvent<
       ApprovalEvent.InputTuple,
       ApprovalEvent.OutputTuple,
@@ -1663,7 +1325,29 @@ export interface CertificateNFT extends BaseContract {
       BatchMetadataUpdateEvent.OutputObject
     >;
 
-    "CertificateIssued(uint256,address,string,string,string,string,uint256)": TypedContractEvent<
+    "CertRevoked(uint256,address)": TypedContractEvent<
+      CertRevokedEvent.InputTuple,
+      CertRevokedEvent.OutputTuple,
+      CertRevokedEvent.OutputObject
+    >;
+    CertRevoked: TypedContractEvent<
+      CertRevokedEvent.InputTuple,
+      CertRevokedEvent.OutputTuple,
+      CertRevokedEvent.OutputObject
+    >;
+
+    "CertVerified(uint256,address,bool)": TypedContractEvent<
+      CertVerifiedEvent.InputTuple,
+      CertVerifiedEvent.OutputTuple,
+      CertVerifiedEvent.OutputObject
+    >;
+    CertVerified: TypedContractEvent<
+      CertVerifiedEvent.InputTuple,
+      CertVerifiedEvent.OutputTuple,
+      CertVerifiedEvent.OutputObject
+    >;
+
+    "CertificateIssued(uint256,address,string,uint8,uint256)": TypedContractEvent<
       CertificateIssuedEvent.InputTuple,
       CertificateIssuedEvent.OutputTuple,
       CertificateIssuedEvent.OutputObject
@@ -1674,37 +1358,15 @@ export interface CertificateNFT extends BaseContract {
       CertificateIssuedEvent.OutputObject
     >;
 
-    "CertificateMetadataStored(uint256,string,address)": TypedContractEvent<
-      CertificateMetadataStoredEvent.InputTuple,
-      CertificateMetadataStoredEvent.OutputTuple,
-      CertificateMetadataStoredEvent.OutputObject
+    "CustomCertDetails(uint256,string)": TypedContractEvent<
+      CustomCertDetailsEvent.InputTuple,
+      CustomCertDetailsEvent.OutputTuple,
+      CustomCertDetailsEvent.OutputObject
     >;
-    CertificateMetadataStored: TypedContractEvent<
-      CertificateMetadataStoredEvent.InputTuple,
-      CertificateMetadataStoredEvent.OutputTuple,
-      CertificateMetadataStoredEvent.OutputObject
-    >;
-
-    "CertificateRevoked(uint256,address,address)": TypedContractEvent<
-      CertificateRevokedEvent.InputTuple,
-      CertificateRevokedEvent.OutputTuple,
-      CertificateRevokedEvent.OutputObject
-    >;
-    CertificateRevoked: TypedContractEvent<
-      CertificateRevokedEvent.InputTuple,
-      CertificateRevokedEvent.OutputTuple,
-      CertificateRevokedEvent.OutputObject
-    >;
-
-    "CertificateVerified(uint256,bool)": TypedContractEvent<
-      CertificateVerifiedEvent.InputTuple,
-      CertificateVerifiedEvent.OutputTuple,
-      CertificateVerifiedEvent.OutputObject
-    >;
-    CertificateVerified: TypedContractEvent<
-      CertificateVerifiedEvent.InputTuple,
-      CertificateVerifiedEvent.OutputTuple,
-      CertificateVerifiedEvent.OutputObject
+    CustomCertDetails: TypedContractEvent<
+      CustomCertDetailsEvent.InputTuple,
+      CustomCertDetailsEvent.OutputTuple,
+      CustomCertDetailsEvent.OutputObject
     >;
 
     "MetadataUpdate(uint256)": TypedContractEvent<
@@ -1727,6 +1389,17 @@ export interface CertificateNFT extends BaseContract {
       PausedEvent.InputTuple,
       PausedEvent.OutputTuple,
       PausedEvent.OutputObject
+    >;
+
+    "RegularCertDetails(uint256,string,string)": TypedContractEvent<
+      RegularCertDetailsEvent.InputTuple,
+      RegularCertDetailsEvent.OutputTuple,
+      RegularCertDetailsEvent.OutputObject
+    >;
+    RegularCertDetails: TypedContractEvent<
+      RegularCertDetailsEvent.InputTuple,
+      RegularCertDetailsEvent.OutputTuple,
+      RegularCertDetailsEvent.OutputObject
     >;
 
     "RoleAdminChanged(bytes32,bytes32,bytes32)": TypedContractEvent<
@@ -1762,26 +1435,15 @@ export interface CertificateNFT extends BaseContract {
       RoleRevokedEvent.OutputObject
     >;
 
-    "SemesterCertificateIssued(uint256,address,string,string,string,string,string,uint256,uint256)": TypedContractEvent<
-      SemesterCertificateIssuedEvent.InputTuple,
-      SemesterCertificateIssuedEvent.OutputTuple,
-      SemesterCertificateIssuedEvent.OutputObject
+    "SemesterCertDetails(uint256,string,string,uint256)": TypedContractEvent<
+      SemesterCertDetailsEvent.InputTuple,
+      SemesterCertDetailsEvent.OutputTuple,
+      SemesterCertDetailsEvent.OutputObject
     >;
-    SemesterCertificateIssued: TypedContractEvent<
-      SemesterCertificateIssuedEvent.InputTuple,
-      SemesterCertificateIssuedEvent.OutputTuple,
-      SemesterCertificateIssuedEvent.OutputObject
-    >;
-
-    "SemesterCertificateRevoked(uint256,address,address)": TypedContractEvent<
-      SemesterCertificateRevokedEvent.InputTuple,
-      SemesterCertificateRevokedEvent.OutputTuple,
-      SemesterCertificateRevokedEvent.OutputObject
-    >;
-    SemesterCertificateRevoked: TypedContractEvent<
-      SemesterCertificateRevokedEvent.InputTuple,
-      SemesterCertificateRevokedEvent.OutputTuple,
-      SemesterCertificateRevokedEvent.OutputObject
+    SemesterCertDetails: TypedContractEvent<
+      SemesterCertDetailsEvent.InputTuple,
+      SemesterCertDetailsEvent.OutputTuple,
+      SemesterCertDetailsEvent.OutputObject
     >;
 
     "Transfer(address,address,uint256)": TypedContractEvent<

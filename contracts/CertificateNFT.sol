@@ -1,491 +1,249 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 
 /**
- * @title CertificateNFT
- * @dev ERC721 NFT contract for Vignan Institute certificates
- * @author Vignan Institute
+ * @title CertificateNFT (Optimized)
+ * @dev High-efficiency NFT contract for Vignan Institute.
+ * Uses event logging for data persistence instead of expensive storage.
  */
-contract CertificateNFT is ERC721, ERC721URIStorage, AccessControl, Pausable {
+contract CertificateNFT is ERC721URIStorage, AccessControl, Pausable {
     using Strings for uint256;
-    // Roles
+
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
-    
-    // State variables
+    bytes32 public constant VERIFIER_ROLE = keccak256("VERIFIER_ROLE");
+
+    enum CertificateType { REGULAR, SEMESTER, ACHIEVEMENT, CUSTOM }
+
+    // Optimization constants
+    uint256 public constant MAX_BATCH_SIZE = 50;
+
+    // Custom Errors
+    error InvalidInput(); 
+    error Unauthorized();
+    error NotFound();
+    error AlreadyExists();
+    error Revoked();
+    error BatchLimit();
+    error LengthMismatch();
+
+    // Minimal State
     uint256 private _tokenIdCounter;
     string private _baseTokenURI;
-    mapping(uint256 => CertificateData) public certificates;
+    
+    // Mapping from token ID to minimal metadata
+    mapping(uint256 => CertificateConfig) public certConfigs;
+    // Mapping from student to list of their token IDs
     mapping(address => uint256[]) public studentCertificates;
+    // Prevent duplicates
     mapping(string => bool) public usedHashes;
-    
-    // CID mapping for certificate metadata
-    mapping(uint256 => string) public tokenIdToCID;
-    mapping(string => uint256) public cidToTokenId;
-    
-    // Semester Certificate mappings
-    mapping(uint256 => SemesterCertificate) public semesterCertificates;
-    mapping(address => uint256[]) public studentSemesterCerts;
-    mapping(string => bool) public usedMemoNumbers;
-    mapping(string => bool) public usedSerialNumbers;
-    
-    // Events
+    mapping(string => bool) public usedUniqueIdentifiers; // SerialNos, MemoNos merged map
+
+    struct CertificateConfig {
+        CertificateType certType;
+        bool isRevoked;
+        address issuer;
+        uint256 issueDate;
+    }
+
+    // Events - These serve as the permanent record of data
     event CertificateIssued(
         uint256 indexed tokenId,
         address indexed student,
-        string indexed courseName,
-        string studentName,
-        string grade,
         string ipfsHash,
+        CertificateType certType,
         uint256 timestamp
     );
     
-    event CertificateRevoked(uint256 indexed tokenId, address indexed student, address indexed admin);
-    event CertificateVerified(uint256 indexed tokenId, bool isValid);
-    event CertificateMetadataStored(uint256 indexed tokenId, string indexed cid, address indexed student);
+    // Detailed log events for indexing (gas cheaper than storage)
+    event RegularCertDetails(uint256 indexed id, string course, string grade);
+    event SemesterCertDetails(uint256 indexed id, string serialNo, string memoNo, uint256 sgpa);
+    event AchievementCertDetails(uint256 indexed id, string title, string category);
+    event CustomCertDetails(uint256 indexed id, string templateId);
     
-    // Semester Certificate Events
-    event SemesterCertificateIssued(
-        uint256 indexed tokenId,
-        address indexed student,
-        string indexed serialNo,
-        string memoNo,
-        string regdNo,
-        string branch,
-        string examination,
-        uint256 sgpa,
-        uint256 timestamp
-    );
-    
-    event SemesterCertificateRevoked(uint256 indexed tokenId, address indexed student, address indexed admin);
-    
-    // Structs
-    struct CertificateData {
-        string studentName;
-        string courseName;
-        string grade;
-        string ipfsHash;
-        string department;
-        uint256 issueDate;
-        bool isRevoked;
-        address issuer;
-    }
-    
-    struct Course {
-        string courseCode;
-        string courseTitle;
-        string gradeSecured;
-        uint256 gradePoints; // Grade points * 100 to avoid decimals
-        string status; // "P" for Pass, "F" for Fail, "A" for Absent
-        uint256 creditsObtained;
-    }
-    
-    struct SemesterCertificate {
-        string studentName;
+    event CertRevoked(uint256 indexed tokenId, address admin);
+    event CertVerified(uint256 indexed tokenId, address verifier, bool isValid);
+
+    struct SemesterParams {
         string serialNo;
         string memoNo;
         string regdNo;
         string branch;
-        string examination; // "IV B.Tech I Semester (VR19) Reg."
-        string monthYearExams; // "October 2022"
-        string aadharNo;
-        string studentPhoto; // IPFS hash
-        Course[] courses;
-        uint256 totalCredits;
-        uint256 sgpa; // Semester Grade Point Average * 100 (to avoid decimals)
-        string mediumOfInstruction;
-        uint256 issueDate;
-        address issuer;
-        bool isRevoked;
+        string examination;
+        uint256 sgpa; // Pre-calculated
     }
-    
+
     constructor() ERC721("Vignan Certificate", "VIGNAN") {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(ADMIN_ROLE, msg.sender);
         _grantRole(MINTER_ROLE, msg.sender);
     }
-    
+
+    // --- Core Internal Logic ---
+
+    function _mintBase(address to, string calldata ipfsHash, CertificateType cType) internal returns (uint256) {
+        if (to == address(0)) revert InvalidInput();
+        if (bytes(ipfsHash).length == 0) revert InvalidInput();
+        if (usedHashes[ipfsHash]) revert AlreadyExists();
+
+        _tokenIdCounter++;
+        uint256 tokenId = _tokenIdCounter;
+
+        _safeMint(to, tokenId);
+        _setTokenURI(tokenId, ipfsHash); // In URIStorage, this sets the full string usually. 
+        // If we want to use baseURI + ID, we would just store the hash. 
+        // For compatibility with previous logic:
+        // We will store just the ipfsHash in the map if needed, but URIStorage stores string.
+        
+        certConfigs[tokenId] = CertificateConfig({
+            certType: cType,
+            isRevoked: false,
+            issuer: msg.sender,
+            issueDate: block.timestamp
+        });
+
+        studentCertificates[to].push(tokenId);
+        usedHashes[ipfsHash] = true;
+
+        emit CertificateIssued(tokenId, to, ipfsHash, cType, block.timestamp);
+        return tokenId;
+    }
+
+    // --- Public Minting Functions ---
+
     /**
-     * @dev Mint a new certificate NFT
-     * @param student Address of the student
-     * @param courseName Name of the course
-     * @param grade Grade achieved
-     * @param ipfsHash IPFS hash for certificate metadata
+     * @dev Batch mint regular certificates. 
+     * Note: Arrays must be equal length.
+     */
+    function mintCertificatesBatch(
+        address[] calldata students,
+        string[] calldata courseNames,
+        string[] calldata grades,
+        string[] calldata ipfsHashes
+    ) external onlyRole(MINTER_ROLE) whenNotPaused {
+        uint256 len = students.length;
+        if (len > MAX_BATCH_SIZE) revert BatchLimit();
+        if (courseNames.length != len || grades.length != len || ipfsHashes.length != len) revert LengthMismatch();
+
+        for (uint256 i = 0; i < len; i++) {
+            uint256 tid = _mintBase(students[i], ipfsHashes[i], CertificateType.REGULAR);
+            emit RegularCertDetails(tid, courseNames[i], grades[i]);
+        }
+    }
+
+    /**
+     * @dev Mint single regular certificate (Legacy support wrapper)
      */
     function mintCertificate(
         address student,
-        string memory courseName,
-        string memory grade,
-        string memory ipfsHash
+        string calldata courseName,
+        string calldata grade,
+        string calldata ipfsHash
     ) external onlyRole(MINTER_ROLE) whenNotPaused returns (uint256) {
-        require(student != address(0), "Invalid student address");
-        require(bytes(courseName).length > 0, "Course name cannot be empty");
-        require(bytes(grade).length > 0, "Grade cannot be empty");
-        require(bytes(ipfsHash).length > 0, "IPFS hash cannot be empty");
-        require(!usedHashes[ipfsHash], "IPFS hash already used");
-        
-        _tokenIdCounter++;
-        uint256 tokenId = _tokenIdCounter;
-        
-        // Store certificate data
-        certificates[tokenId] = CertificateData({
-            studentName: "", // Will be set by admin
-            courseName: courseName,
-            grade: grade,
-            ipfsHash: ipfsHash,
-            department: "", // Will be set by admin
-            issueDate: block.timestamp,
-            isRevoked: false,
-            issuer: msg.sender
-        });
-        
-        // Track student certificates
-        studentCertificates[student].push(tokenId);
-        usedHashes[ipfsHash] = true;
-        
-        // Mint NFT
-        _safeMint(student, tokenId);
-        
-        // Set token URI
-        string memory _tokenURI = string(abi.encodePacked(
-            _baseTokenURI,
-            "/",
-            tokenId.toString()
-        ));
-        _setTokenURI(tokenId, _tokenURI);
-        
-        // Store CID mapping
-        tokenIdToCID[tokenId] = ipfsHash;
-        cidToTokenId[ipfsHash] = tokenId;
-        
-        emit CertificateIssued(tokenId, student, courseName, "", grade, ipfsHash, block.timestamp);
-        emit CertificateMetadataStored(tokenId, ipfsHash, student);
-        
-        return tokenId;
+        uint256 tid = _mintBase(student, ipfsHash, CertificateType.REGULAR);
+        emit RegularCertDetails(tid, courseName, grade);
+        return tid;
     }
-    
+
     /**
-     * @dev Update certificate details (admin only)
-     * @param tokenId ID of the certificate
-     * @param studentName Name of the student
-     * @param department Department name
+     * @dev Mint semester certificate.
+     * simplified to avoid stack too deep.
      */
-    function updateCertificateDetails(
-        uint256 tokenId,
-        string memory studentName,
-        string memory department
-    ) external onlyRole(ADMIN_ROLE) {
-        require(_ownerOf(tokenId) != address(0), "Certificate does not exist");
+    function mintSemesterCertificate(
+        address student,
+        SemesterParams calldata params,
+        string calldata ipfsHash
+    ) external onlyRole(MINTER_ROLE) whenNotPaused returns (uint256) {
+        if (usedUniqueIdentifiers[params.serialNo] || usedUniqueIdentifiers[params.memoNo]) revert AlreadyExists();
         
-        certificates[tokenId].studentName = studentName;
-        certificates[tokenId].department = department;
+        uint256 tid = _mintBase(student, ipfsHash, CertificateType.SEMESTER);
+        
+        usedUniqueIdentifiers[params.serialNo] = true;
+        usedUniqueIdentifiers[params.memoNo] = true;
+
+        emit SemesterCertDetails(tid, params.serialNo, params.memoNo, params.sgpa);
+        return tid;
     }
-    
+
     /**
-     * @dev Revoke a certificate (admin only)
-     * @param tokenId ID of the token to revoke
+     * @dev Mint achievement certificate
      */
+    function mintAchievementCertificate(
+        address student,
+        string calldata title,
+        string calldata category,
+        string calldata ipfsHash,
+        address[] calldata /* verifiers */ // kept for API compat, but unused on-chain
+    ) external onlyRole(MINTER_ROLE) whenNotPaused returns (uint256) {
+        uint256 tid = _mintBase(student, ipfsHash, CertificateType.ACHIEVEMENT);
+        emit AchievementCertDetails(tid, title, category);
+        return tid;
+    }
+
+    /**
+     * @dev Mint custom certificate
+     */
+    function mintCustomCertificate(
+        address student,
+        string calldata templateId,
+        string[] calldata /* fieldNames */, // Data should be in IPFS
+        string[] calldata /* fieldValues */,
+        string calldata ipfsHash
+    ) external onlyRole(MINTER_ROLE) whenNotPaused returns (uint256) {
+        uint256 tid = _mintBase(student, ipfsHash, CertificateType.CUSTOM);
+        emit CustomCertDetails(tid, templateId);
+        return tid;
+    }
+
+    // --- Admin & Verification ---
+
     function revokeCertificate(uint256 tokenId) external onlyRole(ADMIN_ROLE) {
-        require(_ownerOf(tokenId) != address(0), "Certificate does not exist");
-        require(!certificates[tokenId].isRevoked, "Certificate already revoked");
+        if (_ownerOf(tokenId) == address(0)) revert NotFound();
+        if (certConfigs[tokenId].isRevoked) revert Revoked();
         
-        certificates[tokenId].isRevoked = true;
+        certConfigs[tokenId].isRevoked = true;
+        emit CertRevoked(tokenId, msg.sender);
+    }
+
+    function verifyCertificate(uint256 tokenId) external view returns (bool isValid, string memory ipfsUri, CertificateType cType) {
+        if (_ownerOf(tokenId) == address(0)) return (false, "", CertificateType.REGULAR);
         
-        address student = ownerOf(tokenId);
-        emit CertificateRevoked(tokenId, student, msg.sender);
+        CertificateConfig memory conf = certConfigs[tokenId];
+        if (conf.isRevoked) return (false, "", conf.certType);
+
+        return (true, tokenURI(tokenId), conf.certType);
     }
     
-    /**
-     * @dev Verify a certificate and return certificate data
-     * @param tokenId ID of the token to verify
-     * @return certificateData Certificate data struct
-     * @return isValid Whether the certificate is valid
-     */
-    function verifyCertificate(uint256 tokenId) external view returns (CertificateData memory certificateData, bool isValid) {
-        if (_ownerOf(tokenId) == address(0)) {
-            return (certificateData, false);
-        }
-        
-        certificateData = certificates[tokenId];
-        
-        // Check if certificate is revoked
-        if (certificateData.isRevoked) {
-            return (certificateData, false);
-        }
-        
-        return (certificateData, true);
+    // Verifier role action
+    function verifyCertificateByVerifier(uint256 tokenId) external onlyRole(VERIFIER_ROLE) returns (bool, CertificateType) {
+         (bool valid, , CertificateType cType) = this.verifyCertificate(tokenId);
+         emit CertVerified(tokenId, msg.sender, valid);
+         return (valid, cType);
     }
-    
-    /**
-     * @dev Get certificate data
-     * @param tokenId ID of the token
-     * @return Certificate data struct
-     */
-    function getCertificateData(uint256 tokenId) external view returns (CertificateData memory) {
-        require(_ownerOf(tokenId) != address(0), "Token does not exist");
-        return certificates[tokenId];
-    }
-    
-    /**
-     * @dev Get all certificates for a student
-     * @param student Address of the student
-     * @return Array of token IDs
-     */
+
     function getStudentCertificates(address student) external view returns (uint256[] memory) {
         return studentCertificates[student];
     }
-    
-    /**
-     * @dev Get CID for a token ID
-     * @param tokenId ID of the token
-     * @return IPFS CID string
-     */
-    function getCIDByTokenId(uint256 tokenId) external view returns (string memory) {
-        require(_ownerOf(tokenId) != address(0), "Token does not exist");
-        return tokenIdToCID[tokenId];
-    }
-    
-    /**
-     * @dev Get token ID for a CID
-     * @param cid IPFS CID string
-     * @return Token ID
-     */
-    function getTokenIdByCID(string memory cid) external view returns (uint256) {
-        uint256 tokenId = cidToTokenId[cid];
-        require(tokenId != 0, "CID not found");
-        return tokenId;
-    }
-    
-    /**
-     * @dev Set base URI for token metadata
-     * @param baseURI New base URI
-     */
+
+    // Minimal Utils
     function setBaseURI(string memory baseURI) external onlyRole(ADMIN_ROLE) {
         _baseTokenURI = baseURI;
     }
     
-    /**
-     * @dev Pause contract
-     */
-    function pause() external onlyRole(ADMIN_ROLE) {
-        _pause();
-    }
+    function pause() external onlyRole(ADMIN_ROLE) { _pause(); }
+    function unpause() external onlyRole(ADMIN_ROLE) { _unpause(); }
     
-    /**
-     * @dev Unpause contract
-     */
-    function unpause() external onlyRole(ADMIN_ROLE) {
-        _unpause();
-    }
-    
-    // Override required functions
-    function _update(address to, uint256 tokenId, address auth) internal override returns (address) {
-        return super._update(to, tokenId, auth);
-    }
-    
-    function tokenURI(uint256 tokenId) public view override(ERC721, ERC721URIStorage) returns (string memory) {
+    // Overrides
+    function tokenURI(uint256 tokenId) public view override returns (string memory) {
         return super.tokenURI(tokenId);
     }
     
-    function supportsInterface(bytes4 interfaceId) public view override(ERC721, ERC721URIStorage, AccessControl) returns (bool) {
+    function supportsInterface(bytes4 interfaceId) public view override(ERC721URIStorage, AccessControl) returns (bool) {
         return super.supportsInterface(interfaceId);
-    }
-    
-    
-    /**
-     * @dev Mint a new semester certificate NFT
-     * @param student Address of the student
-     * @param serialNo Serial number of the certificate
-     * @param memoNo Memo number of the certificate
-     * @param certData Semester certificate data
-     */
-    function mintSemesterCertificate(
-        address student,
-        string memory serialNo,
-        string memory memoNo,
-        SemesterCertificate memory certData
-    ) external onlyRole(MINTER_ROLE) whenNotPaused returns (uint256) {
-        require(student != address(0), "Invalid student address");
-        require(bytes(serialNo).length > 0, "Serial number cannot be empty");
-        require(bytes(memoNo).length > 0, "Memo number cannot be empty");
-        require(!usedSerialNumbers[serialNo], "Serial number already used");
-        require(!usedMemoNumbers[memoNo], "Memo number already used");
-        require(bytes(certData.studentName).length > 0, "Student name cannot be empty");
-        require(bytes(certData.regdNo).length > 0, "Registration number cannot be empty");
-        require(certData.courses.length > 0, "At least one course required");
-        
-        _tokenIdCounter++;
-        uint256 tokenId = _tokenIdCounter;
-        
-        // Calculate SGPA from courses
-        uint256 calculatedSGPA = calculateSGPA(certData.courses);
-        
-        // Store semester certificate data
-        SemesterCertificate storage newCert = semesterCertificates[tokenId];
-        newCert.studentName = certData.studentName;
-        newCert.serialNo = serialNo;
-        newCert.memoNo = memoNo;
-        newCert.regdNo = certData.regdNo;
-        newCert.branch = certData.branch;
-        newCert.examination = certData.examination;
-        newCert.monthYearExams = certData.monthYearExams;
-        newCert.aadharNo = certData.aadharNo;
-        newCert.studentPhoto = certData.studentPhoto;
-        newCert.totalCredits = certData.totalCredits;
-        newCert.sgpa = calculatedSGPA;
-        newCert.mediumOfInstruction = certData.mediumOfInstruction;
-        newCert.issueDate = block.timestamp;
-        newCert.issuer = msg.sender;
-        newCert.isRevoked = false;
-        
-        // Copy courses
-        for (uint i = 0; i < certData.courses.length; i++) {
-            newCert.courses.push(certData.courses[i]);
-        }
-        
-        // Track student semester certificates
-        studentSemesterCerts[student].push(tokenId);
-        usedSerialNumbers[serialNo] = true;
-        usedMemoNumbers[memoNo] = true;
-        
-        // Mint NFT
-        _safeMint(student, tokenId);
-        
-        // Set token URI
-        string memory _tokenURI = string(abi.encodePacked(
-            _baseTokenURI,
-            "/semester/",
-            tokenId.toString()
-        ));
-        _setTokenURI(tokenId, _tokenURI);
-        
-        emit SemesterCertificateIssued(
-            tokenId,
-            student,
-            serialNo,
-            memoNo,
-            certData.regdNo,
-            certData.branch,
-            certData.examination,
-            calculatedSGPA,
-            block.timestamp
-        );
-        
-        return tokenId;
-    }
-    
-    /**
-     * @dev Calculate SGPA from courses
-     * @param courses Array of courses
-     * @return SGPA multiplied by 100
-     */
-    function calculateSGPA(Course[] memory courses) public pure returns (uint256) {
-        if (courses.length == 0) return 0;
-        
-        uint256 totalGradePoints = 0;
-        uint256 totalCredits = 0;
-        
-        for (uint i = 0; i < courses.length; i++) {
-            if (keccak256(bytes(courses[i].status)) == keccak256(bytes("P"))) {
-                totalGradePoints += courses[i].gradePoints * courses[i].creditsObtained;
-                totalCredits += courses[i].creditsObtained;
-            }
-        }
-        
-        if (totalCredits == 0) return 0;
-        
-        return totalGradePoints / totalCredits;
-    }
-    
-    /**
-     * @dev Get semester certificate data
-     * @param tokenId ID of the token
-     * @return Semester certificate data struct
-     */
-    function getSemesterCertificate(uint256 tokenId) external view returns (SemesterCertificate memory) {
-        require(_ownerOf(tokenId) != address(0), "Token does not exist");
-        return semesterCertificates[tokenId];
-    }
-    
-    /**
-     * @dev Get all semester certificates for a student
-     * @param student Address of the student
-     * @return Array of token IDs
-     */
-    function getStudentSemesterCertificates(address student) external view returns (uint256[] memory) {
-        return studentSemesterCerts[student];
-    }
-    
-    /**
-     * @dev Verify a semester certificate and return certificate data
-     * @param tokenId ID of the token to verify
-     * @return certificateData Semester certificate data struct
-     * @return isValid Whether the certificate is valid
-     */
-    function verifySemesterCertificate(uint256 tokenId) external view returns (SemesterCertificate memory certificateData, bool isValid) {
-        if (_ownerOf(tokenId) == address(0)) {
-            return (certificateData, false);
-        }
-        
-        certificateData = semesterCertificates[tokenId];
-        
-        // Check if certificate is revoked
-        if (certificateData.isRevoked) {
-            return (certificateData, false);
-        }
-        
-        return (certificateData, true);
-    }
-    
-    /**
-     * @dev Revoke a semester certificate (admin only)
-     * @param tokenId ID of the token to revoke
-     */
-    function revokeSemesterCertificate(uint256 tokenId) external onlyRole(ADMIN_ROLE) {
-        require(_ownerOf(tokenId) != address(0), "Certificate does not exist");
-        require(!semesterCertificates[tokenId].isRevoked, "Certificate already revoked");
-        
-        semesterCertificates[tokenId].isRevoked = true;
-        
-        address student = ownerOf(tokenId);
-        emit SemesterCertificateRevoked(tokenId, student, msg.sender);
-    }
-    
-    /**
-     * @dev Update semester certificate details (admin only)
-     * @param tokenId ID of the certificate
-     * @param studentPhoto New student photo IPFS hash
-     */
-    function updateSemesterCertificatePhoto(
-        uint256 tokenId,
-        string memory studentPhoto
-    ) external onlyRole(ADMIN_ROLE) {
-        require(_ownerOf(tokenId) != address(0), "Certificate does not exist");
-        
-        semesterCertificates[tokenId].studentPhoto = studentPhoto;
-    }
-    
-    /**
-     * @dev Check if serial number is used
-     * @param serialNo Serial number to check
-     * @return Whether the serial number is used
-     */
-    function isSerialNumberUsed(string memory serialNo) external view returns (bool) {
-        return usedSerialNumbers[serialNo];
-    }
-    
-    /**
-     * @dev Check if memo number is used
-     * @param memoNo Memo number to check
-     * @return Whether the memo number is used
-     */
-    function isMemoNumberUsed(string memory memoNo) external view returns (bool) {
-        return usedMemoNumbers[memoNo];
     }
 }

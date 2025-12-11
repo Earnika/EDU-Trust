@@ -7,13 +7,12 @@ import VerifyCertificate from './pages/VerifyCertificate';
 import AdminDashboard from './pages/AdminDashboard';
 import PublicVerify from './pages/PublicVerify';
 import StudentDashboard from './pages/StudentDashboard';
-import Scholarships from './pages/Scholarships';
-import ScholarshipDashboard from './pages/ScholarshipDashboard';
-import ClaimScholarship from './pages/ClaimScholarship';
-import SemesterCertificateVerification from './pages/SemesterCertificateVerification';
 import NotFound from './pages/NotFound';
-import LegacyPublicVerify from './pages/LegacyPublicVerify';
-import LegacyCertificateMint from './pages/LegacyCertificateMint';
+import MinterPortal from './pages/MinterPortal';
+import ProtectedRoute from './components/ProtectedRoute';
+import TestDashboard from './pages/TestDashboard';
+import IssueAchievementCertificate from './pages/IssueAchievementCertificate';
+import IssueCustomCertificate from './pages/IssueCustomCertificate';
 
 function App() {
   return (
@@ -23,19 +22,15 @@ function App() {
         <main className="container mx-auto px-4 py-8">
           <Routes>
             <Route path="/" element={<Dashboard />} />
+            <Route path="/test" element={<TestDashboard />} />
+            <Route path="/minter" element={<ProtectedRoute role="MINTER"><MinterPortal /></ProtectedRoute>} />
             <Route path="/issue" element={<IssueCertificate />} />
+            <Route path="/issue-achievement" element={<IssueAchievementCertificate />} />
+            <Route path="/issue-custom" element={<IssueCustomCertificate />} />
             <Route path="/verify" element={<VerifyCertificate />} />
-            <Route path="/verify-legacy" element={<LegacyPublicVerify />} />
-            <Route path="/legacy-mint" element={<LegacyCertificateMint />} />
-            <Route path="/scholarships" element={<Scholarships />} />
-            <Route path="/scholarship-dashboard" element={<ScholarshipDashboard />} />
-            <Route path="/admin" element={<AdminDashboard />} />
-            <Route path="/admin-dashboard" element={<AdminDashboard />} />
-            <Route path="/claim-scholarship" element={<ClaimScholarship />} />
-            <Route path="/student" element={<StudentDashboard />} />
-            <Route path="/student-dashboard" element={<StudentDashboard />} />
             <Route path="/public-verify" element={<PublicVerify />} />
-            <Route path="/verify-semester" element={<SemesterCertificateVerification />} />
+            <Route path="/admin" element={<ProtectedRoute role="ADMIN"><AdminDashboard /></ProtectedRoute>} />
+            <Route path="/student" element={<StudentDashboard />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </main>

@@ -1,110 +1,52 @@
-import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import React, { useState } from 'react';
 import { useWeb3 } from '../contexts/Web3Context';
-import { useCertificateVerification } from '../hooks/useContract';
-import { ethers } from 'ethers';
-import { 
-  Search, 
-  QrCode, 
-  CheckCircle, 
-  XCircle, 
-  Copy,
-  Download,
-  ExternalLink,
-  AlertCircle
-} from 'lucide-react';
-import Logo from '../components/Logo';
+import { useContract } from '../hooks/useContract';
+import { Search, CheckCircle, XCircle, Copy, ExternalLink, AlertCircle, Loader2 } from 'lucide-react';
 
 const VerifyCertificate: React.FC = () => {
-  const [searchParams] = useSearchParams();
-  const { provider } = useWeb3();
-  const { verificationResult, verifyCertificate } = useCertificateVerification();
+  const { isConnected } = useWeb3();
+  const { contracts } = useContract();
   const [tokenId, setTokenId] = useState('');
-  const [verificationMethod, setVerificationMethod] = useState<'tokenId' | 'qr' | 'cid'>('tokenId');
-  const [qrData, setQrData] = useState('');
-  const [cidData, setCidData] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [result, setResult] = useState<{
+    isValid: boolean;
+    ipfsUri: string;
+    certType: number;
+  } | null>(null);
 
-  // Check for tokenId or CID in URL params
-  useEffect(() => {
-    const urlTokenId = searchParams.get('tokenId');
-    const urlCid = searchParams.get('cid');
-    
-    if (urlTokenId) {
-      setTokenId(urlTokenId);
-      verifyCertificate(urlTokenId);
-    } else if (urlCid) {
-      setCidData(urlCid);
-      setVerificationMethod('cid');
-      handleCIDVerification(urlCid);
-    }
-  }, [searchParams, verifyCertificate]);
-
-  const handleTokenIdSubmit = (e: React.FormEvent) => {
+  const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (tokenId.trim()) {
-      verifyCertificate(tokenId.trim());
-    }
-  };
+    if (!tokenId.trim()) return;
 
-  const handleQRSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (qrData.trim()) {
-      // Extract tokenId from QR data
-      try {
-        const url = new URL(qrData);
-        const tokenIdFromQR = url.searchParams.get('tokenId');
-        if (tokenIdFromQR) {
-          setTokenId(tokenIdFromQR);
-          verifyCertificate(tokenIdFromQR);
-        } else {
-          throw new Error('Invalid QR code data');
-        }
-      } catch {
-        // Try to parse as direct tokenId
-        if (qrData.match(/^\d+$/)) {
-          setTokenId(qrData);
-          verifyCertificate(qrData);
-        } else {
-          alert('Invalid QR code data. Please scan a valid certificate QR code.');
-        }
-      }
-    }
-  };
-
-  const handleCIDVerification = async (cid: string) => {
-    if (!provider) {
-      alert('Please connect your wallet first');
-      return;
-    }
+    setLoading(true);
+    setError('');
+    setResult(null);
 
     try {
-      // Create contract instance for CID lookup
-      const contractAddress = import.meta.env.VITE_CERTIFICATE_NFT_ADDRESS;
-      const contractABI = [
-        "function getTokenIdByCID(string memory cid) external view returns (uint256)",
-        "function verifyCertificate(uint256 tokenId) external view returns (tuple(string studentName, string courseName, string grade, string ipfsHash, string department, uint256 issueDate, bool isRevoked, address issuer) certificateData, bool isValid)"
-      ];
-      
-      const contract = new ethers.Contract(contractAddress, contractABI, provider);
-      
-      // Get token ID from CID
-      const retrievedTokenId = await contract.getTokenIdByCID(cid);
-      const tokenIdString = retrievedTokenId.toString();
-      
-      // Set the token ID and verify
-      setTokenId(tokenIdString);
-      verifyCertificate(tokenIdString);
-    } catch (error: any) {
-      console.error('Error verifying by CID:', error);
-      alert('Failed to verify certificate by CID. The CID might not exist or be invalid.');
+      if (!contracts?.certificateNFT) {
+        throw new Error('Contract not loaded. Please refresh the page.');
+      }
+
+      // Call verifyCertificate - returns (isValid, ipfsUri, certType)
+      const [isValid, ipfsUri, certType] = await contracts.certificateNFT.verifyCertificate(tokenId);
+
+      setResult({
+        isValid,
+        ipfsUri,
+        certType: Number(certType)
+      });
+    } catch (err: any) {
+      console.error('Verification error:', err);
+      setError(err.message || 'Failed to verify certificate. Please check the token ID.');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleCIDSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (cidData.trim()) {
-      handleCIDVerification(cidData.trim());
-    }
+  const getCertTypeLabel = (type: number) => {
+    const types = ['Regular', 'Semester', 'Achievement', 'Custom'];
+    return types[type] || 'Unknown';
   };
 
   const copyToClipboard = async (text: string) => {
@@ -114,39 +56,6 @@ const VerifyCertificate: React.FC = () => {
     } catch (err) {
       console.error('Failed to copy:', err);
     }
-  };
-
-  const downloadCertificate = () => {
-    if (!verificationResult.certificateData) return;
-
-    const certificateData = {
-      tokenId,
-      ...verificationResult.certificateData,
-      verificationUrl: `${window.location.origin}/verify?tokenId=${tokenId}`,
-      verifiedAt: new Date().toISOString()
-    };
-
-    const dataStr = JSON.stringify(certificateData, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `certificate-verification-${tokenId}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  };
-
-  const formatDate = (timestamp: number | bigint) => {
-    const numTimestamp = typeof timestamp === 'bigint' ? Number(timestamp) : timestamp;
-    return new Date(numTimestamp * 1000).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
   };
 
   return (
@@ -163,216 +72,114 @@ const VerifyCertificate: React.FC = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Verification Form */}
-        <div className="card">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-              Certificate Verification
-            </h2>
-            <div className="flex space-x-2">
-              <button
-                onClick={() => setVerificationMethod('tokenId')}
-                className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
-                  verificationMethod === 'tokenId'
-                    ? 'bg-primary-100 text-primary-700 dark:bg-primary-900 dark:text-primary-200'
-                    : 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white'
-                }`}
-              >
-                Token ID
-              </button>
-              <button
-                onClick={() => setVerificationMethod('qr')}
-                className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
-                  verificationMethod === 'qr'
-                    ? 'bg-primary-100 text-primary-700 dark:bg-primary-900 dark:text-primary-200'
-                    : 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white'
-                }`}
-              >
-                QR Code
-              </button>
-              <button
-                onClick={() => setVerificationMethod('cid')}
-                className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
-                  verificationMethod === 'cid'
-                    ? 'bg-primary-100 text-primary-700 dark:bg-primary-900 dark:text-primary-200'
-                    : 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white'
-                }`}
-              >
-                IPFS CID
-              </button>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">
+            Enter Token ID
+          </h2>
+
+          <form onSubmit={handleVerify} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <Search className="w-4 h-4 inline mr-2" />
+                Certificate Token ID
+              </label>
+              <input
+                type="text"
+                value={tokenId}
+                onChange={(e) => setTokenId(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                placeholder="Enter token ID (e.g., 1, 2, 3...)"
+                required
+              />
             </div>
-          </div>
 
-          {verificationMethod === 'tokenId' ? (
-            <form onSubmit={handleTokenIdSubmit} className="space-y-4">
-              <div>
-                <label className="label">
-                  <Search className="w-4 h-4 inline mr-2" />
-                  Certificate Token ID
-                </label>
-                <input
-                  type="text"
-                  value={tokenId}
-                  onChange={(e) => setTokenId(e.target.value)}
-                  className="input"
-                  placeholder="Enter certificate token ID"
-                  required
-                />
+            {!isConnected && (
+              <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+                <div className="flex items-center">
+                  <AlertCircle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 mr-2" />
+                  <span className="text-sm text-yellow-800 dark:text-yellow-200">
+                    Connect your wallet to verify certificates
+                  </span>
+                </div>
               </div>
-              <button
-                type="submit"
-                disabled={verificationResult.loading}
-                className="w-full btn-primary flex items-center justify-center space-x-2"
-              >
-                {verificationResult.loading ? (
-                  <>
-                    <div className="loading-spinner" />
-                    <span>Verifying...</span>
-                  </>
-                ) : (
-                  <>
-                    <Search className="w-4 h-4" />
-                    <span>Verify Certificate</span>
-                  </>
-                )}
-              </button>
-            </form>
-          ) : verificationMethod === 'qr' ? (
-            <form onSubmit={handleQRSubmit} className="space-y-4">
-              <div>
-                <label className="label">
-                  <QrCode className="w-4 h-4 inline mr-2" />
-                  QR Code Data
-                </label>
-                <textarea
-                  value={qrData}
-                  onChange={(e) => setQrData(e.target.value)}
-                  className="input"
-                  rows={3}
-                  placeholder="Paste QR code data or scan with camera"
-                  required
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={verificationResult.loading}
-                className="w-full btn-primary flex items-center justify-center space-x-2"
-              >
-                {verificationResult.loading ? (
-                  <>
-                    <div className="loading-spinner" />
-                    <span>Verifying...</span>
-                  </>
-                ) : (
-                  <>
-                    <QrCode className="w-4 h-4" />
-                    <span>Verify from QR Code</span>
-                  </>
-                )}
-              </button>
-            </form>
-          ) : (
-            <form onSubmit={handleCIDSubmit} className="space-y-4">
-              <div>
-                <label className="label">
-                  <ExternalLink className="w-4 h-4 inline mr-2" />
-                  IPFS CID
-                </label>
-                <input
-                  type="text"
-                  value={cidData}
-                  onChange={(e) => setCidData(e.target.value)}
-                  className="input"
-                  placeholder="Enter IPFS CID (e.g., QmSampleHash...)"
-                  required
-                />
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                  Enter the IPFS Content Identifier to look up the certificate
-                </p>
-              </div>
-              <button
-                type="submit"
-                disabled={verificationResult.loading}
-                className="w-full btn-primary flex items-center justify-center space-x-2"
-              >
-                {verificationResult.loading ? (
-                  <>
-                    <div className="loading-spinner" />
-                    <span>Verifying...</span>
-                  </>
-                ) : (
-                  <>
-                    <ExternalLink className="w-4 h-4" />
-                    <span>Verify by CID</span>
-                  </>
-                )}
-              </button>
-            </form>
-          )}
+            )}
 
-          {/* Error Message */}
-          {verificationResult.error && (
-            <div className="mt-4 bg-red-50 dark:bg-red-900 border border-red-200 dark:border-red-700 rounded-lg p-4">
+            <button
+              type="submit"
+              disabled={loading || !isConnected}
+              className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Verifying...</span>
+                </>
+              ) : (
+                <>
+                  <Search className="w-4 h-4" />
+                  <span>Verify Certificate</span>
+                </>
+              )}
+            </button>
+          </form>
+
+          {error && (
+            <div className="mt-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
               <div className="flex items-center">
                 <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 mr-2" />
-                <span className="text-red-800 dark:text-red-200">{verificationResult.error}</span>
+                <span className="text-sm text-red-800 dark:text-red-200">{error}</span>
               </div>
             </div>
           )}
         </div>
 
         {/* Verification Result */}
-        <div className="card">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
           <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">
             Verification Result
           </h2>
 
-          {!verificationResult.certificateData && !verificationResult.loading && !verificationResult.error && (
+          {!result && !loading && (
             <div className="text-center py-12">
-              <div className="mb-4">
-                <Logo size="lg" showText={false} />
-              </div>
-              <p className="text-gray-600 dark:text-gray-300">
-                Enter a certificate token ID or QR code to verify
+              <p className="text-gray-600 dark:text-gray-400">
+                Enter a token ID to verify the certificate
               </p>
             </div>
           )}
 
-          {verificationResult.loading && (
+          {loading && (
             <div className="text-center py-12">
-              <div className="loading-spinner w-8 h-8 mx-auto mb-4" />
-              <p className="text-gray-600 dark:text-gray-300">Verifying certificate...</p>
+              <Loader2 className="w-8 h-8 text-blue-500 animate-spin mx-auto mb-4" />
+              <p className="text-gray-600 dark:text-gray-400">Verifying certificate...</p>
             </div>
           )}
 
-          {verificationResult.certificateData && (
+          {result && (
             <div className="space-y-6">
               {/* Status */}
-              <div className={`p-4 rounded-lg ${
-                verificationResult.isValid 
-                  ? 'bg-green-50 dark:bg-green-900 border border-green-200 dark:border-green-700' 
-                  : 'bg-red-50 dark:bg-red-900 border border-red-200 dark:border-red-700'
-              }`}>
+              <div className={`p-4 rounded-lg ${result.isValid
+                  ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700'
+                  : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700'
+                }`}>
                 <div className="flex items-center">
-                  {verificationResult.isValid ? (
+                  {result.isValid ? (
                     <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400 mr-3" />
                   ) : (
                     <XCircle className="w-6 h-6 text-red-600 dark:text-red-400 mr-3" />
                   )}
                   <div>
-                    <h3 className={`font-semibold ${
-                      verificationResult.isValid 
-                        ? 'text-green-800 dark:text-green-200' 
+                    <h3 className={`font-semibold ${result.isValid
+                        ? 'text-green-800 dark:text-green-200'
                         : 'text-red-800 dark:text-red-200'
-                    }`}>
-                      {verificationResult.isValid ? 'Certificate is Valid' : 'Certificate is Invalid'}
+                      }`}>
+                      {result.isValid ? 'Certificate is Valid ✓' : 'Certificate is Invalid ✗'}
                     </h3>
-                    <p className={`text-sm ${
-                      verificationResult.isValid 
-                        ? 'text-green-700 dark:text-green-300' 
+                    <p className={`text-sm ${result.isValid
+                        ? 'text-green-700 dark:text-green-300'
                         : 'text-red-700 dark:text-red-300'
-                    }`}>
-                      {verificationResult.isValid 
-                        ? 'This certificate has been verified on the blockchain' 
+                      }`}>
+                      {result.isValid
+                        ? 'This certificate has been verified on the blockchain'
                         : 'This certificate is invalid or has been revoked'
                       }
                     </p>
@@ -383,10 +190,10 @@ const VerifyCertificate: React.FC = () => {
               {/* Certificate Details */}
               <div className="space-y-4">
                 <h3 className="font-semibold text-gray-900 dark:text-white">Certificate Details</h3>
-                
-                <div className="grid grid-cols-1 gap-4">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-300">Token ID:</span>
+
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600 dark:text-gray-400">Token ID:</span>
                     <div className="flex items-center space-x-2">
                       <span className="font-mono text-sm text-gray-900 dark:text-white">
                         {tokenId}
@@ -400,59 +207,22 @@ const VerifyCertificate: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-300">Student Name:</span>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600 dark:text-gray-400">Certificate Type:</span>
                     <span className="font-medium text-gray-900 dark:text-white">
-                      {verificationResult.certificateData.studentName}
+                      {getCertTypeLabel(result.certType)}
                     </span>
                   </div>
 
-                  <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-300">Course Name:</span>
-                    <span className="font-medium text-gray-900 dark:text-white">
-                      {verificationResult.certificateData.courseName}
-                    </span>
-                  </div>
-
-                  <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-300">Grade:</span>
-                    <span className="font-medium text-gray-900 dark:text-white">
-                      {verificationResult.certificateData.grade}
-                    </span>
-                  </div>
-
-                  <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-300">Department:</span>
-                    <span className="font-medium text-gray-900 dark:text-white">
-                      {verificationResult.certificateData.department}
-                    </span>
-                  </div>
-
-                  <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-300">Issue Date:</span>
-                    <span className="font-medium text-gray-900 dark:text-white">
-                      {formatDate(verificationResult.certificateData.issueDate)}
-                    </span>
-                  </div>
-
-                  <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-300">Status:</span>
-                    <span className={`status-badge ${
-                      verificationResult.certificateData.isRevoked ? 'status-invalid' : 'status-valid'
-                    }`}>
-                      {verificationResult.certificateData.isRevoked ? 'Revoked' : 'Active'}
-                    </span>
-                  </div>
-
-                  <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-300">Issuer:</span>
-                    <div className="flex items-center space-x-2">
-                      <span className="font-mono text-sm text-gray-900 dark:text-white">
-                        {verificationResult.certificateData.issuer.slice(0, 6)}...{verificationResult.certificateData.issuer.slice(-4)}
+                  <div className="flex justify-between items-start">
+                    <span className="text-gray-600 dark:text-gray-400">IPFS URI:</span>
+                    <div className="flex items-center space-x-2 max-w-xs">
+                      <span className="font-mono text-xs text-gray-900 dark:text-white break-all">
+                        {result.ipfsUri}
                       </span>
                       <button
-                        onClick={() => copyToClipboard(verificationResult.certificateData!.issuer)}
-                        className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                        onClick={() => copyToClipboard(result.ipfsUri)}
+                        className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded flex-shrink-0"
                       >
                         <Copy className="w-4 h-4" />
                       </button>
@@ -462,17 +232,10 @@ const VerifyCertificate: React.FC = () => {
               </div>
 
               {/* Actions */}
-              <div className="flex space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700">
-                <button
-                  onClick={downloadCertificate}
-                  className="flex-1 btn-outline flex items-center justify-center space-x-2"
-                >
-                  <Download className="w-4 h-4" />
-                  <span>Download</span>
-                </button>
+              <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
                 <button
                   onClick={() => window.open(`https://sepolia.etherscan.io/token/${import.meta.env.VITE_CERTIFICATE_NFT_ADDRESS}?a=${tokenId}`, '_blank')}
-                  className="flex-1 btn-outline flex items-center justify-center space-x-2"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center justify-center space-x-2"
                 >
                   <ExternalLink className="w-4 h-4" />
                   <span>View on Etherscan</span>
@@ -484,34 +247,28 @@ const VerifyCertificate: React.FC = () => {
       </div>
 
       {/* Instructions */}
-      <div className="card">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-          How to Verify Certificates
+          How to Verify
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div>
-            <h4 className="font-medium text-gray-900 dark:text-white mb-2">Using Token ID</h4>
-            <ol className="text-sm text-gray-600 dark:text-gray-300 space-y-1">
-              <li>1. Enter the certificate token ID</li>
-              <li>2. Click "Verify Certificate"</li>
-              <li>3. View the verification results</li>
-            </ol>
+            <h4 className="font-medium text-gray-900 dark:text-white mb-2">Step 1</h4>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Connect your wallet using the button in the header
+            </p>
           </div>
           <div>
-            <h4 className="font-medium text-gray-900 dark:text-white mb-2">Using QR Code</h4>
-            <ol className="text-sm text-gray-600 dark:text-gray-300 space-y-1">
-              <li>1. Scan the QR code with your camera</li>
-              <li>2. Paste the QR data in the text area</li>
-              <li>3. Click "Verify from QR Code"</li>
-            </ol>
+            <h4 className="font-medium text-gray-900 dark:text-white mb-2">Step 2</h4>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Enter the certificate token ID you want to verify
+            </p>
           </div>
           <div>
-            <h4 className="font-medium text-gray-900 dark:text-white mb-2">Using IPFS CID</h4>
-            <ol className="text-sm text-gray-600 dark:text-gray-300 space-y-1">
-              <li>1. Enter the IPFS Content Identifier</li>
-              <li>2. Click "Verify by CID"</li>
-              <li>3. System looks up token ID and verifies</li>
-            </ol>
+            <h4 className="font-medium text-gray-900 dark:text-white mb-2">Step 3</h4>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Click "Verify Certificate" to check its authenticity
+            </p>
           </div>
         </div>
       </div>

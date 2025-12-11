@@ -106,9 +106,6 @@ export interface ScholarshipEscrowInterface extends Interface {
       | "DEFAULT_ADMIN_ROLE"
       | "SCHOLARSHIP_MANAGER_ROLE"
       | "certificateNFT"
-      | "checkCourseRequirements"
-      | "checkDepartmentRequirement"
-      | "checkEnrollmentRequirement"
       | "claimScholarship"
       | "createScholarship"
       | "depositFunds"
@@ -118,6 +115,7 @@ export interface ScholarshipEscrowInterface extends Interface {
       | "getStudentScholarships"
       | "getTotalClaimed"
       | "grantRole"
+      | "hasRequiredCertificates"
       | "hasRole"
       | "isEligibleForScholarship"
       | "pause"
@@ -166,18 +164,6 @@ export interface ScholarshipEscrowInterface extends Interface {
     values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: "checkCourseRequirements",
-    values: [AddressLike, string[], boolean]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "checkDepartmentRequirement",
-    values: [AddressLike, string[]]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "checkEnrollmentRequirement",
-    values: [AddressLike, BigNumberish, BigNumberish]
-  ): string;
-  encodeFunctionData(
     functionFragment: "claimScholarship",
     values: [BigNumberish]
   ): string;
@@ -221,6 +207,10 @@ export interface ScholarshipEscrowInterface extends Interface {
   encodeFunctionData(
     functionFragment: "grantRole",
     values: [BytesLike, AddressLike]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "hasRequiredCertificates",
+    values: [AddressLike]
   ): string;
   encodeFunctionData(
     functionFragment: "hasRole",
@@ -288,18 +278,6 @@ export interface ScholarshipEscrowInterface extends Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: "checkCourseRequirements",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
-    functionFragment: "checkDepartmentRequirement",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
-    functionFragment: "checkEnrollmentRequirement",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
     functionFragment: "claimScholarship",
     data: BytesLike
   ): Result;
@@ -332,6 +310,10 @@ export interface ScholarshipEscrowInterface extends Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "grantRole", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "hasRequiredCertificates",
+    data: BytesLike
+  ): Result;
   decodeFunctionResult(functionFragment: "hasRole", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "isEligibleForScholarship",
@@ -630,28 +612,6 @@ export interface ScholarshipEscrow extends BaseContract {
 
   certificateNFT: TypedContractMethod<[], [string], "view">;
 
-  checkCourseRequirements: TypedContractMethod<
-    [student: AddressLike, requiredCourses: string[], requiresAll: boolean],
-    [boolean],
-    "view"
-  >;
-
-  checkDepartmentRequirement: TypedContractMethod<
-    [student: AddressLike, allowedDepartments: string[]],
-    [boolean],
-    "view"
-  >;
-
-  checkEnrollmentRequirement: TypedContractMethod<
-    [
-      student: AddressLike,
-      enrollmentAfter: BigNumberish,
-      enrollmentBefore: BigNumberish
-    ],
-    [boolean],
-    "view"
-  >;
-
   claimScholarship: TypedContractMethod<
     [scholarshipId: BigNumberish],
     [void],
@@ -701,6 +661,12 @@ export interface ScholarshipEscrow extends BaseContract {
     [role: BytesLike, account: AddressLike],
     [void],
     "nonpayable"
+  >;
+
+  hasRequiredCertificates: TypedContractMethod<
+    [student: AddressLike],
+    [boolean],
+    "view"
   >;
 
   hasRole: TypedContractMethod<
@@ -832,31 +798,6 @@ export interface ScholarshipEscrow extends BaseContract {
     nameOrSignature: "certificateNFT"
   ): TypedContractMethod<[], [string], "view">;
   getFunction(
-    nameOrSignature: "checkCourseRequirements"
-  ): TypedContractMethod<
-    [student: AddressLike, requiredCourses: string[], requiresAll: boolean],
-    [boolean],
-    "view"
-  >;
-  getFunction(
-    nameOrSignature: "checkDepartmentRequirement"
-  ): TypedContractMethod<
-    [student: AddressLike, allowedDepartments: string[]],
-    [boolean],
-    "view"
-  >;
-  getFunction(
-    nameOrSignature: "checkEnrollmentRequirement"
-  ): TypedContractMethod<
-    [
-      student: AddressLike,
-      enrollmentAfter: BigNumberish,
-      enrollmentBefore: BigNumberish
-    ],
-    [boolean],
-    "view"
-  >;
-  getFunction(
     nameOrSignature: "claimScholarship"
   ): TypedContractMethod<[scholarshipId: BigNumberish], [void], "nonpayable">;
   getFunction(
@@ -904,6 +845,9 @@ export interface ScholarshipEscrow extends BaseContract {
     [void],
     "nonpayable"
   >;
+  getFunction(
+    nameOrSignature: "hasRequiredCertificates"
+  ): TypedContractMethod<[student: AddressLike], [boolean], "view">;
   getFunction(
     nameOrSignature: "hasRole"
   ): TypedContractMethod<

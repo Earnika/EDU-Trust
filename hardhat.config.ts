@@ -8,9 +8,9 @@ const config: HardhatUserConfig = {
     settings: {
       optimizer: {
         enabled: true,
-        runs: 1000, // Optimized for gas efficiency
+        runs: 1, // Aggressive optimization for size/stack
       },
-      viaIR: true, // Enable via IR for better optimization
+      viaIR: true, // Re-enable viaIR to handle stack too deep
     },
   },
   networks: {

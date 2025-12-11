@@ -2,45 +2,55 @@ import { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 import { useWeb3 } from '../contexts/Web3Context';
 
-// Contract ABIs
+// Contract ABIs - Updated for optimized contract
 const CERTIFICATE_NFT_ABI = [
-  // Original certificate functions
-  "function mintCertificate(address student, string memory courseName, string memory grade, string memory ipfsHash) external returns (uint256)",
-  "function verifyCertificate(uint256 tokenId) external view returns (tuple(string studentName, string courseName, string grade, string ipfsHash, string department, uint256 issueDate, bool isRevoked, address issuer) certificateData, bool isValid)",
-  "function getCertificateData(uint256 tokenId) external view returns (tuple(string studentName, string courseName, string grade, string ipfsHash, string department, uint256 issueDate, bool isRevoked, address issuer))",
-  "function getStudentCertificates(address student) external view returns (uint256[])",
-  "function updateCertificateDetails(uint256 tokenId, string memory studentName, string memory department) external",
+  // Core minting functions
+  "function mintCertificate(address student, string calldata courseName, string calldata grade, string calldata ipfsHash) external returns (uint256)",
+  "function mintCertificatesBatch(address[] calldata students, string[] calldata courseNames, string[] calldata grades, string[] calldata ipfsHashes) external",
+
+  // Semester certificates (simplified params struct)
+  "function mintSemesterCertificate(address student, tuple(string serialNo, string memoNo, string regdNo, string branch, string examination, uint256 sgpa) params, string calldata ipfsHash) external returns (uint256)",
+
+  // Achievement certificates
+  "function mintAchievementCertificate(address student, string calldata title, string calldata category, string calldata ipfsHash, address[] calldata verifiers) external returns (uint256)",
+
+  // Custom certificates
+  "function mintCustomCertificate(address student, string calldata templateId, string[] calldata fieldNames, string[] calldata fieldValues, string calldata ipfsHash) external returns (uint256)",
+
+  // Verification (returns: isValid, ipfsUri, certType)
+  "function verifyCertificate(uint256 tokenId) external view returns (bool isValid, string memory ipfsUri, uint8 cType)",
+  "function verifyCertificateByVerifier(uint256 tokenId) external returns (bool, uint8)",
+
+  // Admin functions
   "function revokeCertificate(uint256 tokenId) external",
-  
-  // Semester certificate functions
-  "function mintSemesterCertificate(address student, string memory serialNo, string memory memoNo, tuple(string studentName, string serialNo, string memoNo, string regdNo, string branch, string examination, string monthYearExams, string aadharNo, string studentPhoto, tuple(string courseCode, string courseTitle, string gradeSecured, uint256 gradePoints, string status, uint256 creditsObtained)[] courses, uint256 totalCredits, uint256 sgpa, string mediumOfInstruction, uint256 issueDate, address issuer, bool isRevoked)) external returns (uint256)",
-  "function getSemesterCertificate(uint256 tokenId) external view returns (tuple(string studentName, string serialNo, string memoNo, string regdNo, string branch, string examination, string monthYearExams, string aadharNo, string studentPhoto, tuple(string courseCode, string courseTitle, string gradeSecured, uint256 gradePoints, string status, uint256 creditsObtained)[] courses, uint256 totalCredits, uint256 sgpa, string mediumOfInstruction, uint256 issueDate, address issuer, bool isRevoked))",
-  "function getStudentSemesterCertificates(address student) external view returns (uint256[])",
-  "function verifySemesterCertificate(uint256 tokenId) external view returns (tuple(string studentName, string serialNo, string memoNo, string regdNo, string branch, string examination, string monthYearExams, string aadharNo, string studentPhoto, tuple(string courseCode, string courseTitle, string gradeSecured, uint256 gradePoints, string status, uint256 creditsObtained)[] courses, uint256 totalCredits, uint256 sgpa, string mediumOfInstruction, uint256 issueDate, address issuer, bool isRevoked) certificateData, bool isValid)",
-  "function revokeSemesterCertificate(uint256 tokenId) external",
-  "function updateSemesterCertificatePhoto(uint256 tokenId, string memory studentPhoto) external",
-  "function isSerialNumberUsed(string memory serialNo) external view returns (bool)",
-  "function isMemoNumberUsed(string memory memoNo) external view returns (bool)",
-  "function calculateSGPA(tuple(string courseCode, string courseTitle, string gradeSecured, uint256 gradePoints, string status, uint256 creditsObtained)[] courses) external pure returns (uint256)",
-  
-  // Common functions
-  "function ownerOf(uint256 tokenId) external view returns (address)",
-  "function balanceOf(address owner) external view returns (uint256)",
-  "function tokenURI(uint256 tokenId) external view returns (string memory)",
   "function setBaseURI(string memory baseURI) external",
   "function pause() external",
   "function unpause() external",
+
+  // Query functions
+  "function getStudentCertificates(address student) external view returns (uint256[])",
+  "function ownerOf(uint256 tokenId) external view returns (address)",
+  "function balanceOf(address owner) external view returns (uint256)",
+  "function tokenURI(uint256 tokenId) external view returns (string memory)",
+
+  // Role management
   "function hasRole(bytes32 role, address account) external view returns (bool)",
   "function grantRole(bytes32 role, address account) external",
   "function MINTER_ROLE() external view returns (bytes32)",
   "function ADMIN_ROLE() external view returns (bytes32)",
-  
+  "function VERIFIER_ROLE() external view returns (bytes32)",
+
+  // Constants
+  "function MAX_BATCH_SIZE() external view returns (uint256)",
+
   // Events
-  "event CertificateIssued(uint256 indexed tokenId, address indexed student, string indexed courseName, string studentName, string grade, string ipfsHash, uint256 timestamp)",
-  "event CertificateRevoked(uint256 indexed tokenId, address indexed student, address indexed admin)",
-  "event CertificateVerified(uint256 indexed tokenId, bool isValid)",
-  "event SemesterCertificateIssued(uint256 indexed tokenId, address indexed student, string indexed serialNo, string memoNo, string regdNo, string branch, string examination, uint256 sgpa, uint256 timestamp)",
-  "event SemesterCertificateRevoked(uint256 indexed tokenId, address indexed student, address indexed admin)"
+  "event CertificateIssued(uint256 indexed tokenId, address indexed student, string ipfsHash, uint8 certType, uint256 timestamp)",
+  "event RegularCertDetails(uint256 indexed id, string course, string grade)",
+  "event SemesterCertDetails(uint256 indexed id, string serialNo, string memoNo, uint256 sgpa)",
+  "event AchievementCertDetails(uint256 indexed id, string title, string category)",
+  "event CustomCertDetails(uint256 indexed id, string templateId)",
+  "event CertRevoked(uint256 indexed tokenId, address admin)",
+  "event CertVerified(uint256 indexed tokenId, address verifier, bool isValid)"
 ];
 
 const SCHOLARSHIP_ESCROW_ABI = [
@@ -107,10 +117,10 @@ export interface ScholarshipData {
 
 export const useCIDVerification = () => {
   const { contracts } = useContract();
-  
+
   const getTokenIdFromCID = async (cid: string): Promise<string | null> => {
     if (!contracts.certificateNFT) return null;
-    
+
     try {
       const tokenId = await contracts.certificateNFT.getTokenIdByCID(cid);
       return tokenId.toString();
@@ -119,10 +129,10 @@ export const useCIDVerification = () => {
       return null;
     }
   };
-  
+
   const getCIDFromTokenId = async (tokenId: string): Promise<string | null> => {
     if (!contracts.certificateNFT) return null;
-    
+
     try {
       const cid = await contracts.certificateNFT.getCIDByTokenId(tokenId);
       return cid;
@@ -131,7 +141,7 @@ export const useCIDVerification = () => {
       return null;
     }
   };
-  
+
   return { getTokenIdFromCID, getCIDFromTokenId };
 };
 
@@ -282,9 +292,9 @@ export const useCertificateVerification = () => {
 
     try {
       setVerificationResult(prev => ({ ...prev, loading: true, error: null }));
-      
+
       const [certificateData, isValid] = await contracts.certificateNFT.verifyCertificate(tokenId);
-      
+
       setVerificationResult({
         certificateData,
         isValid,

@@ -1,15 +1,17 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { 
-  Wallet, 
-  Sun, 
-  Moon, 
-  Menu, 
-  X, 
+import {
+  Wallet,
+  Sun,
+  Moon,
+  Menu,
+  X,
   GraduationCap,
   CheckCircle,
   AlertCircle,
-  Settings
+  Settings,
+  Upload,
+  TestTube
 } from 'lucide-react';
 import { useWeb3 } from '../contexts/Web3Context';
 import { useTheme } from '../hooks/useTheme';
@@ -31,7 +33,7 @@ const Header: React.FC = () => {
 
   const getNetworkStatus = () => {
     if (!network) return null;
-    
+
     const isSepolia = network.chainId === 11155111n;
     return {
       isCorrect: isSepolia,
@@ -43,11 +45,10 @@ const Header: React.FC = () => {
   const networkStatus = getNetworkStatus();
 
   const navItems = [
-    { path: '/', label: 'Dashboard', icon: GraduationCap },
-    { path: '/issue', label: 'Issue Certificate', icon: CheckCircle },
+    { path: '/', label: 'Home', icon: GraduationCap },
+    { path: '/test', label: 'Test Dashboard', icon: TestTube },
+    { path: '/minter', label: 'Minter Portal', icon: Upload },
     { path: '/verify', label: 'Verify', icon: AlertCircle },
-    { path: '/admin-dashboard', label: 'Admin', icon: Settings },
-    { path: '/legacy-mint', label: 'Legacy Mint', icon: CheckCircle },
   ];
 
   return (
@@ -66,11 +67,10 @@ const Header: React.FC = () => {
                 <Link
                   key={item.path}
                   to={item.path}
-                  className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
-                    isActive(item.path)
-                      ? 'bg-primary-100 text-primary-700 dark:bg-primary-900 dark:text-primary-200'
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-700'
-                  }`}
+                  className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${isActive(item.path)
+                    ? 'bg-primary-100 text-primary-700 dark:bg-primary-900 dark:text-primary-200'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-700'
+                    }`}
                 >
                   <Icon className="w-4 h-4" />
                   <span>{item.label}</span>
@@ -83,14 +83,12 @@ const Header: React.FC = () => {
           <div className="flex items-center space-x-3">
             {/* Network Status */}
             {isConnected && networkStatus && (
-              <div className={`hidden sm:flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium ${
-                networkStatus.isCorrect 
-                  ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
-                  : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-              }`}>
-                <div className={`w-2 h-2 rounded-full ${
-                  networkStatus.isCorrect ? 'bg-green-500' : 'bg-red-500'
-                }`} />
+              <div className={`hidden sm:flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium ${networkStatus.isCorrect
+                ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                }`}>
+                <div className={`w-2 h-2 rounded-full ${networkStatus.isCorrect ? 'bg-green-500' : 'bg-red-500'
+                  }`} />
                 <span>{networkStatus.name}</span>
               </div>
             )}
@@ -169,11 +167,10 @@ const Header: React.FC = () => {
                     key={item.path}
                     to={item.path}
                     onClick={() => setMobileMenuOpen(false)}
-                    className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
-                      isActive(item.path)
-                        ? 'bg-primary-100 text-primary-700 dark:bg-primary-900 dark:text-primary-200'
-                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-700'
-                    }`}
+                    className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${isActive(item.path)
+                      ? 'bg-primary-100 text-primary-700 dark:bg-primary-900 dark:text-primary-200'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-700'
+                      }`}
                   >
                     <Icon className="w-4 h-4" />
                     <span>{item.label}</span>
@@ -193,11 +190,10 @@ const Header: React.FC = () => {
                     </span>
                   </div>
                   {networkStatus && (
-                    <span className={`text-xs px-2 py-1 rounded-full ${
-                      networkStatus.isCorrect 
-                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
-                        : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                    }`}>
+                    <span className={`text-xs px-2 py-1 rounded-full ${networkStatus.isCorrect
+                      ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                      : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                      }`}>
                       {networkStatus.name}
                     </span>
                   )}
