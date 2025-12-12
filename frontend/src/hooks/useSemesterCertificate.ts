@@ -86,23 +86,9 @@ export const useSemesterCertificate = () => {
         throw new Error('Contract missing required functions. Please ensure the contract is properly deployed with semester certificate functionality.');
       }
 
-      // Check if serial number or memo number already exists
-      console.log('🔍 Checking serial and memo number availability...');
-      const [serialExists, memoExists] = await Promise.all([
-        contracts.certificateNFT.isSerialNumberUsed(serialNo),
-        contracts.certificateNFT.isMemoNumberUsed(memoNo)
-      ]);
-
-      console.log('Serial exists:', serialExists);
-      console.log('Memo exists:', memoExists);
-
-      if (serialExists) {
-        throw new Error('Serial number already exists');
-      }
-
-      if (memoExists) {
-        throw new Error('Memo number already exists');
-      }
+      // Note: The optimized contract handles duplicate checking internally
+      // via the usedUniqueIdentifiers mapping. No need for pre-validation.
+      console.log('📝 Preparing to mint semester certificate...');
 
       // Check user permissions
       console.log('🔍 Checking user permissions...');
@@ -110,7 +96,7 @@ export const useSemesterCertificate = () => {
         const minterRole = await contracts.certificateNFT.MINTER_ROLE();
         const hasRole = await contracts.certificateNFT.hasRole(minterRole, account);
         console.log('Has MINTER_ROLE:', hasRole);
-        
+
         if (!hasRole) {
           throw new Error('Account does not have MINTER_ROLE. Please contact admin to grant minting permissions.');
         }
@@ -154,7 +140,7 @@ export const useSemesterCertificate = () => {
       console.log('Contract cert data:', contractCertData);
       console.log('📊 Courses after filtering:', contractCertData.courses);
       console.log('📊 Course count:', contractCertData.courses.length);
-      
+
       // Log each course details with data types and conversion
       contractCertData.courses.forEach((course, index) => {
         const originalCourse = certData.courses[index];
@@ -203,38 +189,37 @@ export const useSemesterCertificate = () => {
       }
 
       // Auto-generate unique serial and memo numbers if they're already used
-      console.log('🔍 Checking if serial/memo numbers are already used...');
+      console.log('🔍 Preparing semester certificate data...');
       let finalSerialNo = serialNo;
       let finalMemoNo = memoNo;
-      
-      const isSerialUsed = await contracts.certificateNFT.isSerialNumberUsed(serialNo);
-      const isMemoUsed = await contracts.certificateNFT.isMemoNumberUsed(memoNo);
-      
-      if (isSerialUsed) {
-        console.log(`⚠️ Serial number "${serialNo}" is already used. Generating new one...`);
-        finalSerialNo = await getAvailableSerialNumber(
-          (sn) => contracts.certificateNFT!.isSerialNumberUsed(sn)
-        );
-        console.log(`✅ Generated new serial number: ${finalSerialNo}`);
-      }
-      
-      if (isMemoUsed) {
-        console.log(`⚠️ Memo number "${memoNo}" is already used. Generating new one...`);
-        finalMemoNo = await getAvailableMemoNumber(
-          (mn) => contracts.certificateNFT!.isMemoNumberUsed(mn)
-        );
-        console.log(`✅ Generated new memo number: ${finalMemoNo}`);
-      }
+
+      // Calculate SGPA (simplified - just average of grade points)
+      const totalGradePoints = certData.courses.reduce((sum, course) => sum + Number(course.gradePoints || 0), 0);
+      const sgpa = certData.courses.length > 0 ? Math.round((totalGradePoints / certData.courses.length) * 100) : 0;
+
+      // Prepare SemesterParams struct to match contract
+      const semesterParams = {
+        serialNo: finalSerialNo,
+        memoNo: finalMemoNo,
+        regdNo: certData.regdNo,
+        branch: certData.branch,
+        examination: certData.examination,
+        sgpa: sgpa
+      };
+
+      // Generate IPFS hash (mock for now)
+      const ipfsHash = `Qm${Math.random().toString(36).substr(2, 9)}${Date.now().toString(36)}`;
+
+      console.log('Semester params:', semesterParams);
+      console.log('IPFS hash:', ipfsHash);
 
       // Test with static call first
       console.log('🔍 Testing with static call...');
       try {
-        // Use signer-connected contract for static call so onlyRole checks see the correct msg.sender
         const staticResult = await signedContracts.certificateNFT.mintSemesterCertificate.staticCall(
           studentAddress,
-          finalSerialNo,
-          finalMemoNo,
-          contractCertData
+          semesterParams,
+          ipfsHash
         );
         console.log('✅ Static call successful. Token ID would be:', staticResult.toString());
       } catch (staticErr: any) {
@@ -246,9 +231,8 @@ export const useSemesterCertificate = () => {
       console.log('🔍 Estimating gas...');
       const gasEstimate = await signedContracts.certificateNFT.mintSemesterCertificate.estimateGas(
         studentAddress,
-        finalSerialNo,
-        finalMemoNo,
-        contractCertData
+        semesterParams,
+        ipfsHash
       );
 
       console.log('Gas estimate:', gasEstimate.toString());
@@ -260,14 +244,13 @@ export const useSemesterCertificate = () => {
       console.log('🔍 Executing transaction...');
       const tx = await signedContracts.certificateNFT.mintSemesterCertificate(
         studentAddress,
-        finalSerialNo,
-        finalMemoNo,
-        contractCertData,
+        semesterParams,
+        ipfsHash,
         { gasLimit }
       );
 
       const receipt = await tx.wait();
-      
+
       // Extract token ID from events
       const events = receipt.logs.filter((log: any) => {
         try {
@@ -308,7 +291,7 @@ export const useSemesterCertificate = () => {
 
     try {
       const certData = await contracts.certificateNFT.getSemesterCertificate(tokenId);
-      
+
       return {
         studentName: certData.studentName,
         serialNo: certData.serialNo,
@@ -375,7 +358,7 @@ export const useSemesterCertificate = () => {
 
     try {
       const [certData, isValid] = await contracts.certificateNFT.verifySemesterCertificate(tokenId);
-      
+
       return {
         isValid,
         certificate: isValid ? {

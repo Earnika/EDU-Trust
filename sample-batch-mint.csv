@@ -1,0 +1,3 @@
+studentAddress,studentName,courseName,grade,ipfsHash,certificateType
+0x371f0765550d085611e11b7399ae79cc7feb9b54,John Doe,Computer Science Fundamentals,A+,QmXk9vN2mPqR7sT4uV8wYzA3bC5dE6fG7hJ8iK9lM1nO2p,REGULAR
+0x8626f6940E2eb28930eFb4CeF49B2d1F2C9C1199,Jane Smith,Data Structures,A,QmYp3wQ8xR9sT1uV2wXzB4aC6dE7fH8hJ9iL1kM2nP3qR,REGULAR

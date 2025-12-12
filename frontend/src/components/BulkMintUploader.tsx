@@ -3,6 +3,7 @@ import { Upload, Download, AlertCircle, CheckCircle, Loader2, FileText, X } from
 import { ethers } from 'ethers';
 import { useContract } from '../hooks/useContract';
 import { useWeb3 } from '../contexts/Web3Context';
+import jsPDF from 'jspdf';
 
 interface CertificateRow {
     studentAddress: string;
@@ -244,18 +245,162 @@ const BulkMintUploader: React.FC<BulkMintUploaderProps> = ({ onMintComplete }) =
             const receipt = await tx.wait();
             console.log('Transaction confirmed:', receipt.hash);
 
-            // Extract token IDs if possible (depends on event logs parsing)
-            // For now just callback with empty array or parse receipt logs
+            // Extract token IDs from events
+            const tokenIds: string[] = [];
+            try {
+                for (const log of receipt.logs) {
+                    try {
+                        const parsed = signedContracts.certificateNFT.interface.parseLog(log);
+                        if (parsed?.name === 'CertificateIssued') {
+                            tokenIds.push(parsed.args.tokenId.toString());
+                        }
+                    } catch {
+                        // Skip logs that don't match
+                    }
+                }
+            } catch (error) {
+                console.warn('Could not extract token IDs from receipt');
+            }
+
+            console.log('Minted token IDs:', tokenIds);
+
+            // Generate PDFs for each certificate
+            if (tokenIds.length > 0) {
+                console.log('Generating PDFs for', tokenIds.length, 'certificates...');
+                for (let i = 0; i < validRows.length && i < tokenIds.length; i++) {
+                    const row = validRows[i];
+                    const tokenId = tokenIds[i];
+
+                    // Generate PDF for this certificate
+                    const doc = new jsPDF({
+                        orientation: 'landscape',
+                        unit: 'mm',
+                        format: 'a4'
+                    });
+
+                    const pageWidth = doc.internal.pageSize.getWidth();
+                    const pageHeight = doc.internal.pageSize.getHeight();
+
+                    // Background
+                    doc.setFillColor(59, 130, 246); // Blue
+                    doc.rect(0, 0, pageWidth, 15, 'F');
+                    doc.setFillColor(249, 250, 251);
+                    doc.rect(0, 15, pageWidth, pageHeight - 30, 'F');
+                    doc.setFillColor(59, 130, 246);
+                    doc.rect(0, pageHeight - 15, pageWidth, 15, 'F');
+
+                    // Border
+                    doc.setDrawColor(59, 130, 246);
+                    doc.setLineWidth(2);
+                    doc.rect(10, 10, pageWidth - 20, pageHeight - 20);
+                    doc.setLineWidth(0.5);
+                    doc.rect(15, 15, pageWidth - 30, pageHeight - 30);
+
+                    // Title
+                    doc.setFontSize(36);
+                    doc.setTextColor(59, 130, 246);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text('CERTIFICATE OF COMPLETION', pageWidth / 2, 40, { align: 'center' });
+
+                    // Decorative line
+                    doc.setDrawColor(59, 130, 246);
+                    doc.setLineWidth(1);
+                    doc.line(60, 45, pageWidth - 60, 45);
+
+                    // "This is to certify that"
+                    doc.setFontSize(14);
+                    doc.setTextColor(75, 85, 99);
+                    doc.setFont('helvetica', 'normal');
+                    doc.text('This is to certify that', pageWidth / 2, 65, { align: 'center' });
+
+                    // Student name
+                    doc.setFontSize(28);
+                    doc.setTextColor(31, 41, 55);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text(row.studentName || 'Student', pageWidth / 2, 80, { align: 'center' });
+
+                    // Underline
+                    doc.setDrawColor(59, 130, 246);
+                    doc.setLineWidth(0.5);
+                    doc.line(pageWidth / 2 - 60, 82, pageWidth / 2 + 60, 82);
+
+                    // Course text
+                    doc.setFontSize(14);
+                    doc.setTextColor(75, 85, 99);
+                    doc.setFont('helvetica', 'normal');
+                    doc.text('has successfully completed the course', pageWidth / 2, 95, { align: 'center' });
+
+                    // Course name
+                    doc.setFontSize(20);
+                    doc.setTextColor(59, 130, 246);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text(row.courseName, pageWidth / 2, 110, { align: 'center' });
+
+                    // Grade
+                    doc.setFontSize(16);
+                    doc.setTextColor(31, 41, 55);
+                    doc.setFont('helvetica', 'normal');
+                    doc.text(`Grade: ${row.grade}`, pageWidth / 2, 125, { align: 'center' });
+
+                    // Date
+                    doc.setFontSize(12);
+                    doc.setTextColor(75, 85, 99);
+                    const dateText = new Date().toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                    });
+                    doc.text(`Date: ${dateText}`, 40, pageHeight - 40);
+
+                    // Signature line
+                    doc.setLineWidth(0.5);
+                    doc.setDrawColor(107, 114, 128);
+                    doc.line(pageWidth - 100, pageHeight - 45, pageWidth - 30, pageHeight - 45);
+                    doc.setFontSize(10);
+                    doc.setTextColor(107, 114, 128);
+                    doc.text('Authorized Signatory', pageWidth - 65, pageHeight - 38, { align: 'center' });
+
+                    // Token ID
+                    doc.setFontSize(8);
+                    doc.setTextColor(156, 163, 175);
+                    doc.text(`Token ID: ${tokenId}`, pageWidth - 30, pageHeight - 25, { align: 'right' });
+
+                    // Blockchain verified badge
+                    doc.setFillColor(16, 185, 129);
+                    doc.circle(30, pageHeight - 30, 8, 'F');
+                    doc.setFontSize(8);
+                    doc.setTextColor(255, 255, 255);
+                    doc.text('✓', 30, pageHeight - 28, { align: 'center' });
+                    doc.setFontSize(9);
+                    doc.setTextColor(16, 185, 129);
+                    doc.text('Blockchain Verified', 42, pageHeight - 28);
+
+                    // Download PDF
+                    const pdfBlob = doc.output('blob');
+                    const url = URL.createObjectURL(pdfBlob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = `certificate-${tokenId}-${row.studentName.replace(/\s+/g, '-')}.pdf`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(url);
+
+                    // Small delay between downloads to avoid browser blocking
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+                console.log('✅ All PDFs generated and downloaded!');
+            }
 
             if (onMintComplete) {
-                onMintComplete([]); // Pass tokenIds if parsed
+                onMintComplete(tokenIds.map(id => parseInt(id)));
             }
 
             // Reset form
             setFile(null);
             setData([]);
             setErrors([]);
-            alert('Batch minting successful!');
+            alert(`Batch minting successful! ${tokenIds.length} certificates minted and PDFs downloaded.`);
 
         } catch (error: any) {
             console.error('Batch minting error:', error);
@@ -293,8 +438,8 @@ const BulkMintUploader: React.FC<BulkMintUploaderProps> = ({ onMintComplete }) =
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
                 className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${isDragging
-                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                        : 'border-gray-300 dark:border-gray-600'
+                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                    : 'border-gray-300 dark:border-gray-600'
                     }`}
             >
                 <input
